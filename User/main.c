@@ -90,6 +90,7 @@ int main(void)
 //			USART_ClearFlag(USARTx,USART_FLAG_TC); 			
 //		}
 }
+//Haha demo thanh cong roi 
 
 /**
   * @brief  Configures the USART Peripheral.
