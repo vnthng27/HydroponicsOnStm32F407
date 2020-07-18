@@ -1,0 +1,19 @@
+.\objects\diskio.o: tm_stm32f4_fatfs\fatfs\diskio.c
+.\objects\diskio.o: tm_stm32f4_fatfs\fatfs\diskio.h
+.\objects\diskio.o: tm_stm32f4_fatfs\fatfs\integer.h
+.\objects\diskio.o: .\tm_stm32f4_fatfs\defines.h
+.\objects\diskio.o: .\tm_stm32f4_fatfs\attributes.h
+.\objects\diskio.o: tm_stm32f4_fatfs\fatfs\ff.h
+.\objects\diskio.o: tm_stm32f4_fatfs\fatfs\ffconf.h
+.\objects\diskio.o: .\tm_stm32f4_fatfs\fatfs\drivers\fatfs_sd.h
+.\objects\diskio.o: .\CMSIS\stm32f4xx.h
+.\objects\diskio.o: .\CMSIS\Include\core_cm4.h
+.\objects\diskio.o: C:\Program Files (x86)\Keil_v5\ARM\ARMCC\Bin\..\include\stdint.h
+.\objects\diskio.o: .\CMSIS\Include\core_cmInstr.h
+.\objects\diskio.o: .\CMSIS\Include\core_cmFunc.h
+.\objects\diskio.o: .\CMSIS\Include\core_cmSimd.h
+.\objects\diskio.o: C:\Users\Admin\AppData\Local\Arm\Packs\Keil\STM32F4xx_DFP\2.14.0\Drivers\CMSIS\Device\ST\STM32F4xx\Include\system_stm32f4xx.h
+.\objects\diskio.o: .\CMSIS\stm32f4xx_conf.h
+.\objects\diskio.o: .\Std_PeriphDriver\inc\stm32f4xx_rcc.h
+.\objects\diskio.o: .\Std_PeriphDriver\inc\stm32f4xx_gpio.h
+.\objects\diskio.o: .\Std_PeriphDriver\inc\misc.h

@@ -338,7 +338,7 @@
               <MiscControls></MiscControls>
               <Define>STM32F40_41xxx,USE_STDPERIPH_DRIVER,HSE_VALUE=8000000,USE_FULL_ASSERT</Define>
               <Undefine></Undefine>
-              <IncludePath>.\CMSIS\Include;.\CMSIS;.\FreeRTOS;.\FreeRTOS\include;.\FreeRTOS\portable\RVDS\ARM_CM4F;.\Startup;.\Std_PeriphDriver\inc;.\Std_PeriphDriver\src;.\User;.\FreeRTOS\portable\MemMang</IncludePath>
+              <IncludePath>.\CMSIS\Include;.\CMSIS;.\FreeRTOS;.\FreeRTOS\include;.\FreeRTOS\portable\RVDS\ARM_CM4F;.\Startup;.\Std_PeriphDriver\inc;.\Std_PeriphDriver\src;.\User;.\FreeRTOS\portable\MemMang;.\tm_stm32f4_fatfs;.\tm_stm32f4_fatfs\fatfs;.\tm_stm32f4_fatfs\fatfs\drivers;.\tm_stm32f4_fatfs\fatfs\option;.\RTC_I2C\Inc;.\RTC_I2C\Src</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -477,6 +477,11 @@
               <FileType>1</FileType>
               <FilePath>..\FreeRTOS\Std_PeriphDriver\src\misc.c</FilePath>
             </File>
+            <File>
+              <FileName>stm32f4xx_i2c.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\FreeRTOS\Std_PeriphDriver\src\stm32f4xx_i2c.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -516,6 +521,29 @@
               <FileName>heap_4.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\FreeRTOS\portable\MemMang\heap_4.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>FatFs</GroupName>
+        </Group>
+        <Group>
+          <GroupName>RTC</GroupName>
+          <Files>
+            <File>
+              <FileName>rtc_i2c.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\RTC_I2C\Src\rtc_i2c.c</FilePath>
+            </File>
+            <File>
+              <FileName>rtc_ds1307.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\RTC_I2C\Src\rtc_ds1307.c</FilePath>
+            </File>
+            <File>
+              <FileName>rtc_usart.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\RTC_I2C\Src\rtc_usart.c</FilePath>
             </File>
           </Files>
         </Group>
