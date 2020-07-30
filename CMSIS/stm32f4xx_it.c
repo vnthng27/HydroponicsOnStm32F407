@@ -135,7 +135,6 @@ void DebugMon_Handler(void)
   * @param  None
   * @retval None
   */
-
 /******************************************************************************/
 /*                 STM32F4xx Peripherals Interrupt Handlers                   */
 /*  Add here the Interrupt Handler for the used peripheral(s) (PPP), for the  */

@@ -1,7 +1,7 @@
 .\objects\croutine.o: FreeRTOS\croutine.c
 .\objects\croutine.o: .\FreeRTOS\include\FreeRTOS.h
-.\objects\croutine.o: C:\Program Files (x86)\Keil_v5\ARM\ARMCC\Bin\..\include\stddef.h
-.\objects\croutine.o: C:\Program Files (x86)\Keil_v5\ARM\ARMCC\Bin\..\include\stdint.h
+.\objects\croutine.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stddef.h
+.\objects\croutine.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdint.h
 .\objects\croutine.o: .\FreeRTOS\include\FreeRTOSConfig.h
 .\objects\croutine.o: C:\Users\Admin\AppData\Local\Arm\Packs\Keil\STM32F4xx_DFP\2.14.0\Drivers\CMSIS\Device\ST\STM32F4xx\Include\system_stm32f4xx.h
 .\objects\croutine.o: .\FreeRTOS\include\projdefs.h

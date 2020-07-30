@@ -1,0 +1,13 @@
+.\objects\ds18b20_mflib.o: OneWireLib\ds18b20_mflib.c
+.\objects\ds18b20_mflib.o: OneWireLib\ds18b20_mflib.h
+.\objects\ds18b20_mflib.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\math.h
+.\objects\ds18b20_mflib.o: .\CMSIS\stm32f4xx.h
+.\objects\ds18b20_mflib.o: .\CMSIS\Include\core_cm4.h
+.\objects\ds18b20_mflib.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdint.h
+.\objects\ds18b20_mflib.o: .\CMSIS\Include\core_cmInstr.h
+.\objects\ds18b20_mflib.o: .\CMSIS\Include\core_cmFunc.h
+.\objects\ds18b20_mflib.o: .\CMSIS\Include\core_cmSimd.h
+.\objects\ds18b20_mflib.o: C:\Users\Admin\AppData\Local\Arm\Packs\Keil\STM32F4xx_DFP\2.14.0\Drivers\CMSIS\Device\ST\STM32F4xx\Include\system_stm32f4xx.h
+.\objects\ds18b20_mflib.o: .\CMSIS\stm32f4xx_conf.h
+.\objects\ds18b20_mflib.o: .\Std_PeriphDriver\inc\stm32f4xx_gpio.h
+.\objects\ds18b20_mflib.o: .\Std_PeriphDriver\inc\stm32f4xx_rcc.h

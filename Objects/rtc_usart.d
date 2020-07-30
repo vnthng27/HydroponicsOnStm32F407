@@ -1,7 +1,7 @@
 .\objects\rtc_usart.o: RTC_I2C\Src\rtc_usart.c
 .\objects\rtc_usart.o: .\CMSIS\stm32f4xx.h
 .\objects\rtc_usart.o: .\CMSIS\Include\core_cm4.h
-.\objects\rtc_usart.o: C:\Program Files (x86)\Keil_v5\ARM\ARMCC\Bin\..\include\stdint.h
+.\objects\rtc_usart.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdint.h
 .\objects\rtc_usart.o: .\CMSIS\Include\core_cmInstr.h
 .\objects\rtc_usart.o: .\CMSIS\Include\core_cmFunc.h
 .\objects\rtc_usart.o: .\CMSIS\Include\core_cmSimd.h

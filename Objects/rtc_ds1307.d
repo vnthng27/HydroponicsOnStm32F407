@@ -1,8 +1,8 @@
 .\objects\rtc_ds1307.o: RTC_I2C\Src\rtc_ds1307.c
-.\objects\rtc_ds1307.o: C:\Program Files (x86)\Keil_v5\ARM\ARMCC\Bin\..\include\stdio.h
-.\objects\rtc_ds1307.o: C:\Program Files (x86)\Keil_v5\ARM\ARMCC\Bin\..\include\stdint.h
-.\objects\rtc_ds1307.o: C:\Program Files (x86)\Keil_v5\ARM\ARMCC\Bin\..\include\stdlib.h
-.\objects\rtc_ds1307.o: C:\Program Files (x86)\Keil_v5\ARM\ARMCC\Bin\..\include\inttypes.h
+.\objects\rtc_ds1307.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdio.h
+.\objects\rtc_ds1307.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdint.h
+.\objects\rtc_ds1307.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdlib.h
+.\objects\rtc_ds1307.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\inttypes.h
 .\objects\rtc_ds1307.o: .\CMSIS\stm32f4xx.h
 .\objects\rtc_ds1307.o: .\CMSIS\Include\core_cm4.h
 .\objects\rtc_ds1307.o: .\CMSIS\Include\core_cmInstr.h

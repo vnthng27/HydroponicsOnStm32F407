@@ -18,7 +18,7 @@
 void USART_puts(volatile char *s) {
     while(*s){
 		  // wait until data register is empty
-		  while( !(USART1->SR & 0x00000040) ); 
+		  while( !(USART1->SR & 0x00000040) ) ;
 		      USART_SendData(USART1, *s);
 		  *s++;
     }
