@@ -10,11 +10,15 @@ int main(void) {
 	EXTI_Config();
 	//Create Semaphore 
 	xSemaphoreUARTRX = xSemaphoreCreateBinary();
-	xSemaphoreDataHMI = xSemaphoreCreateBinary();
+	xSemaphoreChangepage = xSemaphoreCreateBinary();
 	xSemaphoreSonicSensor = xSemaphoreCreateBinary();
 	xSemaphoredosingInterval = xSemaphoreCreateBinary();
 	xSemaphoresensorsReady = xSemaphoreCreateBinary();
 	xSemaphoreHandleData = xSemaphoreCreateBinary();
+	xSemaphoreEXTIZCD = xSemaphoreCreateBinary();
+	xSemaphoreHadData = xSemaphoreCreateBinary();
+	GPIO_WriteBit(GPIOD,GPIO_Pin_2,Bit_SET);
+	GPIO_WriteBit(GPIOD,GPIO_Pin_3,Bit_SET);
 	
 	xTaskCreate(handleUARTRX, "xu ly data rev from hmi",  configMINIMAL_STACK_SIZE, NULL, 1, NULL);
 	xTaskCreate(handleHMI, "xu ly HMI",  configMINIMAL_STACK_SIZE, NULL, 1, NULL);
@@ -46,11 +50,12 @@ int main(void) {
 	xTaskCreate(pageFlow, "pageFlow",  configMINIMAL_STACK_SIZE, NULL, 1, &TaskpageFlow);
 	xTaskCreate(pageProfile, "pageProfile",  configMINIMAL_STACK_SIZE, NULL, 1, &TaskpageProfile);
 	xTaskCreate(pageFeritilizer, "pageFeritilizer",  configMINIMAL_STACK_SIZE, NULL, 1, &TaskpageFeritilizer);
-	xTaskCreate(readSensor, "readSensor", 200, NULL, 1, NULL);
-	//xTaskCreate(temperature_task, "sensor temp", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
-	//xTaskCreate(sonic_task, "sonic_task", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
-	//xTaskCreate(adc_task, "adc_task", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
+	//xTaskCreate(readSensor, "readSensor", 200, NULL, 1, NULL);
+	xTaskCreate(temperature_task, "temperature_task", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
+	xTaskCreate(sonic_task, "sonic_task", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
+	xTaskCreate(adc_task, "adc_task", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
 	//xTaskCreate(ControlWater, "ControlEnviromental", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
+//	xTaskCreate(WaterPlants, "WaterPlants", 200, NULL, 1, NULL);
 	vTaskStartScheduler();
 
 	
@@ -99,35 +104,37 @@ void USART3_puts(volatile char *s) {
   * @param  None
   * @retval None
   */
-void EXTI1_IRQHandler(void)
-{
+void EXTI1_IRQHandler(void) {
 	static BaseType_t xHigherPriorityTaskWoken ;
 	xHigherPriorityTaskWoken = pdFALSE ;
   if(EXTI_GetITStatus(EXTI_Line1) != RESET)
   {
-		countEXTI ++;
-    /* Clear the EXTI line 1 pending bit */
+		if (GPIO_ReadInputDataBit(GPIOB,GPIO_Pin_1) == Bit_RESET) {
+			//xSemaphoreGiveFromISR( xSemaphoreEXTIZCD, &xHigherPriorityTaskWoken );
+			//GPIO_WriteBit(GPIOD,GPIO_Pin_4,Bit_SET);
+			//GPIO_WriteBit(GPIOD,GPIO_Pin_5,Bit_SET);
+		}
+		/* Clear the EXTI line 1 pending bit */
     EXTI_ClearITPendingBit(EXTI_Line1);
   }
 	portYIELD_FROM_ISR( xHigherPriorityTaskWoken );	
 }
 
 void pageHome(void *pvParameters) {
-	rtc_ds1307_datetime_t rtc_datetime;
 	uint8_t prevHour = 0;
 	uint8_t prevMinute = 0;
 	char bufferSend[] = "";
-	//ds1307_get_rtc_datetime(&rtc_datetime);
 	prevHour = rtc_datetime.hour;
 	prevMinute = rtc_datetime.minutes;
-	xSemaphoreGive(xSemaphoreHandleData);
 	uint8_t prevID = 10;
 	uint16_t preNumValSaved = 0;
-	char threeByteEnd[3] = {0xFF,0xFF,0xFF};
-	#define endData USART3_puts(&threeByteEnd[0]);
 	vTaskSuspend(NULL);
 	while (1) {
 		prevpage = HOME;
+		if (reloadPage == true) {
+			prevID = 10;
+			reloadPage = false;
+		}
 		if (IDHMI == 0x00 && DataHMI[0] == 0) {
 			if (prevID != IDHMI ) {
 				USART3_puts("cle 19,0");
@@ -166,9 +173,8 @@ void pageHome(void *pvParameters) {
 				sprintf(bufferSend,"t8.txt=\"%d\"",targetMaxTds);
 				USART3_puts(&bufferSend[0]);
 				endData;
-				xSemaphoreGive(xSemaphoreHandleData);
+				
 			}
-			
 			if (NumValSaved - preNumValSaved >0) {
 				preNumValSaved = NumValSaved;
 				sprintf(bufferSend,"addt 19,0,%d",NumValSaved - preNumValSaved);
@@ -179,7 +185,7 @@ void pageHome(void *pvParameters) {
 			sprintf(bufferSend,"t3.txt=\"%0.1f\"",data_sensor[0]);
 			USART3_puts(&bufferSend[0]);
 			endData;
-			
+			xSemaphoreGive(xSemaphoreHandleData);
 			vTaskDelay(250/portTICK_PERIOD_MS);
 		}
 		else if (IDHMI == 0x02 && DataHMI[0] == 2) {
@@ -213,7 +219,7 @@ void pageHome(void *pvParameters) {
 				endData;
 				USART3_puts("t8.txt=\"\"");
 				endData;
-				xSemaphoreGive(xSemaphoreHandleData);
+				
 			}
 
 			if (NumValSaved - preNumValSaved >0) {
@@ -225,7 +231,7 @@ void pageHome(void *pvParameters) {
 			sprintf(bufferSend,"t3.txt=\"%0.1f\"",data_sensor[3]);
 			USART3_puts(&bufferSend[0]);
 			endData;
-			
+			xSemaphoreGive(xSemaphoreHandleData);
 			vTaskDelay(250/portTICK_PERIOD_MS);
 		}
 		else if (IDHMI == 0x03 && DataHMI[0] == 3) {
@@ -261,7 +267,7 @@ void pageHome(void *pvParameters) {
 				sprintf(bufferSend,"t8.txt=\"%d\"",targetMaxTankLv);
 				USART3_puts(&bufferSend[0]);
 				endData;
-				xSemaphoreGive(xSemaphoreHandleData);
+				
 			}
 			
 			if (NumValSaved - preNumValSaved >0) {
@@ -273,6 +279,7 @@ void pageHome(void *pvParameters) {
 //			sprintf(bufferSend,"t3.txt=\"%0.1f\"",data_sensor[2]);
 //			USART3_puts(&bufferSend[0]);
 //			endData;
+			xSemaphoreGive(xSemaphoreHandleData);
 			vTaskDelay(250/portTICK_PERIOD_MS);
 		}
 		else if (IDHMI == 0x04 && DataHMI[0] == 4) {
@@ -308,7 +315,6 @@ void pageHome(void *pvParameters) {
 				sprintf(bufferSend,"t8.txt=\"%0.1f\"",targetMaxPh);
 				USART3_puts(&bufferSend[0]);
 				endData;
-				xSemaphoreGive(xSemaphoreHandleData);
 			}
 
 			if (NumValSaved - preNumValSaved >0) {
@@ -317,15 +323,14 @@ void pageHome(void *pvParameters) {
 					USART3_puts(&sensorPHinDay[j]);
 				}
 			}
-			sprintf(bufferSend,"t3.txt=\"%0.1f\"",data_sensor[0]);
+			sprintf(bufferSend,"t3.txt=\"%0.1f\"",data_sensor[1]);
 			USART3_puts(&bufferSend[0]);
 			endData;
+			xSemaphoreGive(xSemaphoreHandleData);
 			vTaskDelay(250/portTICK_PERIOD_MS);
 		}
 		else
 			xSemaphoreGive(xSemaphoreHandleData);
-		
-		//ds1307_get_rtc_datetime(&rtc_datetime);
 		if (rtc_datetime.hour != prevHour) {
 			sprintf(bufferSend,"hour.val=%d",rtc_datetime.hour);
 			USART3_puts(&bufferSend[0]);
@@ -345,13 +350,14 @@ void pageHome(void *pvParameters) {
 void pageWarning(void *pvParameters) {
 	uint8_t prevID = 10;
 	char bufferSend[] = "";
-	xSemaphoreGive(xSemaphoreHandleData);
 	char threeByteEnd[3] = {0xFF,0xFF,0xFF};
-	#define endData USART3_puts(&threeByteEnd[0]);
 	vTaskSuspend(NULL);
-	
 	while (1) {
 		prevpage = WARINING;
+		if (reloadPage == true) {
+			prevID = 10;
+			reloadPage = false;
+		}
 		if (IDHMI == 0 && DataHMI[0] == 0) {
 			if (prevID != IDHMI) {
 				USART3_puts("t2.txt=\"PPM WARNING\"");
@@ -364,9 +370,9 @@ void pageWarning(void *pvParameters) {
 				endData;
 				USART3_puts("b3.bco=50712");
 				endData;
-				xSemaphoreGive(xSemaphoreHandleData);
 			}
 			prevID = IDHMI;
+			
 		}
 		else if (IDHMI == 1 && DataHMI[0] == 1) {
 			if (prevID != IDHMI) {
@@ -380,9 +386,9 @@ void pageWarning(void *pvParameters) {
 				endData;
 				USART3_puts("b3.bco=50712");
 				endData;
-				xSemaphoreGive(xSemaphoreHandleData);
 			}
 			prevID = IDHMI;
+			
 		}
 		else if (IDHMI == 2 && DataHMI[0] == 2) {
 			if (prevID != IDHMI) {
@@ -396,7 +402,6 @@ void pageWarning(void *pvParameters) {
 				endData;
 				USART3_puts("b3.bco=50712");
 				endData;
-				xSemaphoreGive(xSemaphoreHandleData);
 			}
 			prevID = IDHMI;
 		}
@@ -412,19 +417,17 @@ void pageWarning(void *pvParameters) {
 				endData;
 				USART3_puts("b3.bco=1024");
 				endData;
-				xSemaphoreGive(xSemaphoreHandleData);
 			}
 			prevID = IDHMI;
 		}
-		else 
-			xSemaphoreGive(xSemaphoreHandleData);
 		if (prevID == 0) {
 			sprintf(bufferSend,"t3.txt=\"%0.1f\"",data_sensor[0]);
 			USART3_puts(&bufferSend[0]);
-			endData;
+			endData; 	
 			sprintf(bufferSend,"t1.txt=\"%f\"",errorMarginPPM);
 			USART3_puts(&bufferSend[0]);
 			endData;
+			xSemaphoreGive(xSemaphoreHandleData);
 		}
 		if (prevID == 1) {
 			sprintf(bufferSend,"t3.txt=\"%0.1f\"",data_sensor[3]);
@@ -433,39 +436,39 @@ void pageWarning(void *pvParameters) {
 			sprintf(bufferSend,"t1.txt=\"%0.1f\"",errorMarginTEMP);
 			USART3_puts(&bufferSend[0]);
 			endData;
+			xSemaphoreGive(xSemaphoreHandleData);
 		}
 		if (prevID == 2) {
 			sprintf(bufferSend,"t3.txt=\"%0.1f\"",data_sensor[1]);
 			USART3_puts(&bufferSend[0]);
 			endData;
-			sprintf(bufferSend,"x0.val=%0.1f",errorMarginPH);
+			sprintf(bufferSend,"x0.val=%d",(uint8_t)(errorMarginPH*10));
 			USART3_puts(&bufferSend[0]);
 			endData;
+			xSemaphoreGive(xSemaphoreHandleData);
 		}
 		if (prevID == 3) {
 			sprintf(bufferSend,"t3.txt=\"%0.1f\"",data_sensor[2]);
 			USART3_puts(&bufferSend[0]);
 			endData;
-			sprintf(bufferSend,"t1.txt=\"%0.1f\"",errorMarginTANK);
+			sprintf(bufferSend,"t1.txt=\"%d\"",(uint16_t)errorMarginTANK);
 			USART3_puts(&bufferSend[0]);
 			endData;
+			xSemaphoreGive(xSemaphoreHandleData);	
 		}
 		if (IDHMI == 5 ) {
 			errorMarginPPM = (float)((DataHMI[1]<<8) | DataHMI[0]);
-			xSemaphoreGive(xSemaphoreHandleData);
 		}
 		if (IDHMI == 6 ) {
 			errorMarginTEMP = (float)((DataHMI[1]<<8) | DataHMI[0]);
-			xSemaphoreGive(xSemaphoreHandleData);
 		}
 		if (IDHMI == 7 ) {
 			errorMarginPH = (float)(DataHMI[0]/10.0);
-			xSemaphoreGive(xSemaphoreHandleData);
 		}
 		if (IDHMI == 8 ) {
 			errorMarginTANK = (float)((DataHMI[1]<<8) | DataHMI[0]);
-			xSemaphoreGive(xSemaphoreHandleData);
 		}
+		xSemaphoreGive(xSemaphoreHandleData);
 		vTaskDelay(150/portTICK_PERIOD_MS);
 	}
 }
@@ -476,22 +479,45 @@ void pageWifi(void *pvParameters) {
 			WifiInterval = (uint16_t)((DataHMI[1]<<8) | DataHMI[0]);
 		}
 		xSemaphoreGive(xSemaphoreHandleData);
+		reloadPage = false;
 		vTaskDelay(150/portTICK_PERIOD_MS);
 	}
 }
 void pagePPM(void *pvParameters) {
+	char bufferSend[] = "";
 	vTaskSuspend(NULL);
 	while (1) {
-		if (IDHMI == 0) {
-			targetMinTdsALL = (unsigned int)((DataHMI[1]<<8) | DataHMI[0]);
-		}
-		if (IDHMI == 1) {
-			targetMaxTdsALL = (unsigned int)((DataHMI[1]<<8) | DataHMI[0]);
-		}
-		if (IDHMI == 2) {
-			targetMaxTdsALL = (unsigned int)((DataHMI[1]<<8) | DataHMI[0]);
-		}
-		xSemaphoreGive(xSemaphoreHandleData);
+//		if (reloadPage == true) {
+//			sprintf(bufferSend,"min.val=%d",targetMinTdsALL);
+//			USART3_puts(&bufferSend[0]);
+//			endData;
+//			sprintf(bufferSend,"max.val=%d",targetMaxTdsALL);
+//			USART3_puts(&bufferSend[0]);
+//			endData;
+//			sprintf(bufferSend,"tol.val=%d",tdsOffsetALL);
+//			USART3_puts(&bufferSend[0]);
+//			endData;
+//			sprintf(bufferSend,"t4.txt=\"%d\"",targetMinTdsALL);
+//			USART3_puts(&bufferSend[0]);
+//			endData;
+//			sprintf(bufferSend,"t5.txt=\"%d\"",targetMaxTdsALL);
+//			USART3_puts(&bufferSend[0]);
+//			endData;
+//			sprintf(bufferSend,"t6.txt=\"%d\"",tdsOffsetALL);
+//			USART3_puts(&bufferSend[0]);
+//			endData;
+//			reloadPage = false;
+//		}
+		if (xSemaphoreTake( xSemaphoreHadData,portMAX_DELAY) == pdTRUE) {
+			if (IDHMI == 1) {
+				targetMinTdsALL = (unsigned int)((DataHMI[1]<<8) | DataHMI[0]);
+		
+				targetMaxTdsALL = (unsigned int)((DataHMI[3]<<8) | DataHMI[2]);
+				
+				tdsOffsetALL = (unsigned int)((DataHMI[5]<<8) | DataHMI[4]);
+			}
+			xSemaphoreGive(xSemaphoreHandleData);
+		}	
 	}
 }
 void pagePPM2(void *pvParameters) {
@@ -634,8 +660,9 @@ void pageFeritilizer(void *pvParameters) {
 void handleHMI(void *pvParameters) {
 	while (1)
 	{ 
-			if (xSemaphoreTake(xSemaphoreDataHMI,portMAX_DELAY) == pdTRUE)
+			if (xSemaphoreTake(xSemaphoreChangepage,portMAX_DELAY) == pdTRUE)
 			{
+				xSemaphoreGive(xSemaphoreHandleData);
 				switch (prevpage) {
 					case HOME:
 					{
@@ -777,136 +804,163 @@ void handleHMI(void *pvParameters) {
 				switch (page) {
 					case HOME:
 					{
+						reloadPage = true;
 						vTaskResume(TaskpageHome);
 						break;
 					}
 					case WARINING:
 					{
+						reloadPage = true;
 						vTaskResume(TaskpageWarning);
 						break;
 					}
 					case WIFI:
 					{
+						reloadPage = true;
 						vTaskResume(TaskpageWifi);
 						break;
 					}
 					case PPM:
 					{
+						reloadPage = true;
 						vTaskResume(TaskpagePPM);
 						break;
 					}
 					case PPM2:
 					{
+						reloadPage = true;
 						vTaskResume(TaskpagePPM2);
 						break;
 					}
 					case PH:
 					{
+						reloadPage = true;
 						vTaskResume(TaskpagepH);
 						break;
 					}
 					case TANK:
 					{
+						reloadPage = true;
 						vTaskResume(TaskpageTank);
 						break;
 					}
 					case TANK2:
 					{
+						reloadPage = true;
 						vTaskResume(TaskpageTank2);
 						break;
 					}
 					case VALVE:
 					{
+						reloadPage = true;
 						vTaskResume(TaskpageValve);
 						break;
 					}
 					case VALVE2:
 					{
+						reloadPage = true;
 						vTaskResume(TaskpageValve2);
 						break;
 					}
 					case PERISTALTIC_PUMP:
 					{
+						reloadPage = true;
 						vTaskResume(TaskpagePeristaltic);
 						break;
 					}
 					case PUMP:
 					{
+						reloadPage = true;
 						vTaskResume(TaskpagePump);
 						break;
 					}
 					case PUMP2:
 					{
+						reloadPage = true;
 						vTaskResume(TaskpagePump2);
 						break;
 					}
 					case PUMP3:
 					{
+						reloadPage = true;
 						vTaskResume(TaskpagePump3);
 						break;
 					}
 					case PUMP4:
 					{
+						reloadPage = true;
 						vTaskResume(TaskpagePump4);
 						break;
 					}
 					case PUMP5:
 					{
+						reloadPage = true;
 						vTaskResume(TaskpagePump5);
 						break;
 					}
 					case GRAPH:
 					{
+						reloadPage = true;
 						vTaskResume(TaskpageGraph);
 						break;
 					}
 					case SETTING:
 					{
+						reloadPage = true;
 						vTaskResume(TaskpageSetting);
 						break;
 					}
 					case SETTING_DATE:
 					{
+						reloadPage = true;
 						vTaskResume(TaskpageSettingDate);
 						break;
 					}
 					case REFILL_DATE:
 					{
+						reloadPage = true;
 						vTaskResume(TaskpageRefilldate);
 						break;
 					}
 					case CAL_PH:
 					{
+						reloadPage = true;
 						vTaskResume(TaskpageCalpH);
 						break;
 					}
 					case CAL_PPM:
 					{
+						reloadPage = true;
 						vTaskResume(TaskpageCalPPM);
 						break;
 					}
 					case CAL_TEMP:
 					{
+						reloadPage = true;
 						vTaskResume(TaskpageCalTemp);
 						break;
 					}
 					case CAL_SONIC:
 					{
+						reloadPage = true;
 						vTaskResume(TaskpageCalSonic);
 						break;
 					}
 					case CAL_FLOW:
 					{
+						reloadPage = true;
 						vTaskResume(TaskpageFlow);
 						break;
 					}
 					case PROFILE:
 					{
+						reloadPage = true;
 						vTaskResume(TaskpageProfile);
 						break;
 					}
 					case FERITILIZER:
 					{
+						reloadPage = true;
 						vTaskResume(TaskpageFeritilizer);
 						break;
 					}
@@ -952,9 +1006,10 @@ void handleUARTRX(void *pvParameters) {
 							}
 							default:
 							{
-								memset(DataHMIREV,'\0',LENGTH_DATA_HMI);
-								FlagTC = FALSE;
-								break;
+									typedata = UNKNOWN;
+									memset(DataHMIREV,'\0',LENGTH_DATA_HMI);
+									FlagTC = FALSE;
+									break;
 							}
 					}
 						if (typedata == START_PAGE) {
@@ -1100,10 +1155,8 @@ void handleUARTRX(void *pvParameters) {
 								}
 							}
 							FlagTC = FALSE;
-							
-							xSemaphoreGive(xSemaphoreDataHMI); // Give Semaphore to task handleHMI
+							xSemaphoreGive(xSemaphoreChangepage); // Give Semaphore to task handleHMI
 							memset(DataHMIREV,'\0',LENGTH_DATA_HMI);
-							vTaskDelay(1);
 							memset(DataHMI,'\0',LENGTH_DATA_HMI);
 							IDHMI = 0;
 							
@@ -1120,7 +1173,7 @@ void handleUARTRX(void *pvParameters) {
 										else 
 											DataHMI[i] = DataHMIREV[i+3];
 									}
-									
+									xSemaphoreGive(xSemaphoreHadData);
 									FlagTC = FALSE;
 									memset(DataHMIREV,'\0',LENGTH_DATA_HMI);
 								}
@@ -1175,6 +1228,8 @@ void readSensor(void *pvParameters) {
 	unsigned long int sumSensorPPMinDay = 0;
 	unsigned long int sumSensorTANKinDay = 0;
 	unsigned long int sumSensorTEMPinDay = 0;
+	GPIO_WriteBit(GPIOD,GPIO_Pin_2,Bit_SET);
+	GPIO_WriteBit(GPIOD,GPIO_Pin_3,Bit_SET);
 	while (1){
 		ds18b20_init_seq();
 		ds18b20_send_rom_cmd(SKIP_ROM_CMD_BYTE);
@@ -1187,6 +1242,7 @@ void readSensor(void *pvParameters) {
 		ds18b20_send_function_cmd(READ_SCRATCHPAD_CMD);
 		data_sensor[3] = ds18b20_read_temp();
 		
+		//vTaskDelay(100/portTICK_PERIOD_MS);
 		USART_SendData(USART2,(uint16_t )data_sonic_trigger);
 		for (int i = 0;i<4;i++) {
 			if (xSemaphoreTake( xSemaphoreSonicSensor,portMAX_DELAY) == pdTRUE )
@@ -1196,6 +1252,7 @@ void readSensor(void *pvParameters) {
 		distance = (distance <<8)| data_sonic[2];
 		data_sensor[2]=distance;
 		
+		//vTaskDelay(100/portTICK_PERIOD_MS);
 		volt_cur = ((float)uhADCxConvertedValue[1]*3)/4095;
 		val_con = volt_cur/(1+(0.02*(data_sensor[3]-25)));
 		data_sensor[0] = ((133.42*val_con*val_con*val_con)-(255.86*val_con*val_con)+(857.39*val_con))*0.5;
@@ -1229,7 +1286,52 @@ void readSensor(void *pvParameters) {
 		
 	}
 }
+void temperature_task(void *pvParameters) {
+	data_sensor[3] = 0.0	;
+	while(1) {
+			ds18b20_init_seq();
+			ds18b20_send_rom_cmd(SKIP_ROM_CMD_BYTE);
+			ds18b20_send_function_cmd(CONVERT_T_CMD);
 
+			mydelayus(100);
+
+			ds18b20_init_seq();
+			ds18b20_send_rom_cmd(SKIP_ROM_CMD_BYTE);
+			ds18b20_send_function_cmd(READ_SCRATCHPAD_CMD);
+			data_sensor[3] = ds18b20_read_temp();
+			vTaskDelay(500/portTICK_PERIOD_MS);
+		}
+}
+void sonic_task(void *pvParameters) {
+	uint8_t data_sonic[4];
+	uint8_t data_sonic_trigger = 0x55;
+	uint16_t distance;
+	while (1) {
+		USART_SendData(USART2,(uint16_t )data_sonic_trigger);
+		for (int i = 0;i<4;i++) {
+			if (xSemaphoreTake( xSemaphoreSonicSensor,portMAX_DELAY) == pdTRUE )
+				data_sonic[i] = (uint8_t)USART_ReceiveData(USART2);
+		}
+		distance = (distance &0)| data_sonic[1];
+		distance = (distance <<8)| data_sonic[2];
+		data_sensor[2]=distance;
+		vTaskDelay(500/portTICK_PERIOD_MS);
+	}
+}
+void adc_task(void *pvParameters) {
+	float volt_cur=0.0;
+	float val_con = 0.0; 
+	float volt_cur_ph =0.0;
+	while (1) {
+		volt_cur = ((float)uhADCxConvertedValue[1]*3)/4095;
+		val_con = volt_cur/(1+(0.02*(data_sensor[3]-25)));
+		data_sensor[0] = ((133.42*val_con*val_con*val_con)-(255.86*val_con*val_con)+(857.39*val_con))*0.5;
+		
+		volt_cur_ph =(((float)uhADCxConvertedValue[0]*3)/4095);
+		data_sensor[1]=volt_cur_ph*3.5 + 1.2;
+		vTaskDelay(500/portTICK_PERIOD_MS);
+		}
+}
 float speedtomils(uint8_t speed){
 	return ((54.0/2549.0)*(float)speed) - 0.2615;
 }
@@ -1651,6 +1753,20 @@ void ControlWater(void *pvParameters)	{
 		}
 	}
 }
-
+void WaterPlants(void *pvParameters) {
+	GPIO_WriteBit(GPIOD,GPIO_Pin_0,Bit_SET);
+	GPIO_WriteBit(GPIOD,GPIO_Pin_1,Bit_SET);
+	vTaskSuspend(NULL);
+	while (1) {
+		if (xSemaphoreTake(xSemaphoreEXTIZCD,portMAX_DELAY) == pdTRUE ) {
+			vTaskDelay(1);
+			GPIO_WriteBit(GPIOD,GPIO_Pin_4,Bit_SET);
+			GPIO_WriteBit(GPIOD,GPIO_Pin_5,Bit_SET);
+			delayus(100);
+			GPIO_WriteBit(GPIOD,GPIO_Pin_4,Bit_RESET);
+			GPIO_WriteBit(GPIOD,GPIO_Pin_5,Bit_RESET);
+		}
+	}
+}
 
 

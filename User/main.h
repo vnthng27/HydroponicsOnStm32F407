@@ -82,7 +82,7 @@ typedef enum  {
 }modeOfPump;
 
 modeOfPump modePumpDoser[4] = {NOMODE,NOMODE,NOMODE,FRE_B};
-uint8_t speedPumpDoser[4] = {0,0,0,0};
+uint8_t speedPumpDoser[4] = {0,0,0,100};
 
 #define maxSize 20 // size toi da cua mang
 unsigned int phDownDosingInc[maxSize] = {0};
@@ -160,12 +160,13 @@ uint16_t WifiInterval = 0;
 **	BIEN PHUC VU CHO NGUOI DUNG
 */
 uint16_t countEXTI = 0;
-
+bool reloadPage = false;
 
 /*
 **	BIEN PHUC VU CHO HE THONG
 */
 uint8_t currentlyDosing = FALSE;
+rtc_ds1307_datetime_t rtc_datetime;
 /*
 *	KHAI BAO BIEN VA DINH NGHIA PHUC VU XU LY GIAO TIEP HMI
 */
@@ -175,7 +176,8 @@ typedef enum {FAILED = 0, PASSED = !FAILED} Status;
 #define BYTE_FIRST_SEND_DATA 0xF5 //byte start send data of page
 #define END_DATA 0xFF // byte ket thuc chuoi du lieu tu HMI
 #define LENGTH_DATA_HMI 100 // Do dai chuoi du lieu toi da tu HMI
-
+char threeByteEnd[3] = {0xFF,0xFF,0xFF};
+#define endData USART3_puts(&threeByteEnd[0]);
 //	Xac dinh page hien tai cua HMI
 typedef enum {
 	HOME 								= 0U,
@@ -529,28 +531,36 @@ static void GPIO_Configuration(void){
   */
 	/*-----------------------------PORT D----------------------------*/	
 	GPIO_InitTypeDef GPIOD_InitStructure;
-	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOD,ENABLE);   
+	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOD,ENABLE);    
 	
-	GPIOD_InitStructure.GPIO_Pin = GPIO_Pin_12; 
-	GPIOD_InitStructure.GPIO_Mode = GPIO_Mode_OUT;              
-	GPIOD_InitStructure.GPIO_Speed = GPIO_High_Speed;             
-	GPIOD_InitStructure.GPIO_OType = GPIO_OType_PP;
-	GPIOD_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
-	GPIO_Init(GPIOD, &GPIOD_InitStructure);  
-	
-	/*Configure D12 D13 D14 D15 for PWM output TIM4*/
-	GPIOD_InitStructure.GPIO_Pin = GPIO_Pin_13 | GPIO_Pin_14 | GPIO_Pin_15;
-  GPIOD_InitStructure.GPIO_Mode = GPIO_Mode_AF;
+	/*Configure D12 D13 D14 D15 for Valve*/
+	GPIOD_InitStructure.GPIO_Pin = GPIO_Pin_12 |GPIO_Pin_13 | GPIO_Pin_14 | GPIO_Pin_15;
+  GPIOD_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
   GPIOD_InitStructure.GPIO_Speed = GPIO_High_Speed;
   GPIOD_InitStructure.GPIO_OType = GPIO_OType_PP;
-  GPIOD_InitStructure.GPIO_PuPd = GPIO_PuPd_DOWN;
+  GPIOD_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
   GPIO_Init(GPIOD, &GPIOD_InitStructure); 
-
-  /* Connect TIM4 pins to AF */  
-  GPIO_PinAFConfig(GPIOD, GPIO_PinSource12, GPIO_AF_TIM4);
-  GPIO_PinAFConfig(GPIOD, GPIO_PinSource13, GPIO_AF_TIM4); 
-  GPIO_PinAFConfig(GPIOD, GPIO_PinSource14, GPIO_AF_TIM4);
-  GPIO_PinAFConfig(GPIOD, GPIO_PinSource15, GPIO_AF_TIM4); 
+	
+	GPIO_WriteBit(GPIOD,GPIO_Pin_12,Bit_RESET);
+	GPIO_WriteBit(GPIOD,GPIO_Pin_13,Bit_RESET);
+	GPIO_WriteBit(GPIOD,GPIO_Pin_14,Bit_RESET);
+	GPIO_WriteBit(GPIOD,GPIO_Pin_15,Bit_RESET);
+	
+	/*Configure D0 D1 D4 D5 for PWM output TIM4*/
+	GPIOD_InitStructure.GPIO_Pin = GPIO_Pin_2 | GPIO_Pin_3 ;
+  GPIOD_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
+  GPIOD_InitStructure.GPIO_Speed = GPIO_High_Speed;
+  GPIOD_InitStructure.GPIO_OType = GPIO_OType_PP;
+  GPIOD_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
+  GPIO_Init(GPIOD, &GPIOD_InitStructure); 
+	
+	/*Configure D0 D1 D4 D5 for PWM output TIM4*/
+	GPIOD_InitStructure.GPIO_Pin = GPIO_Pin_0 | GPIO_Pin_1 | GPIO_Pin_4 | GPIO_Pin_5;
+  GPIOD_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
+  GPIOD_InitStructure.GPIO_Speed = GPIO_High_Speed;
+  GPIOD_InitStructure.GPIO_OType = GPIO_OType_PP;
+  GPIOD_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
+  GPIO_Init(GPIOD, &GPIOD_InitStructure); 
 	
 /*-----------------------------PORT A----------------------------*/	
 //	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA,ENABLE);
@@ -577,7 +587,7 @@ static void GPIO_Configuration(void){
 	GPIOB_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL ;
 	GPIO_Init(GPIOB, &GPIOB_InitStructure);  
 	  
-	/* Configure PB0 pin for external interrupt sensor Flow */
+	/* Configure PB1 pin for external interrupt sensor Flow */
   GPIOB_InitStructure.GPIO_Mode = GPIO_Mode_IN;
   GPIOB_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
   GPIOB_InitStructure.GPIO_Pin = GPIO_Pin_1;
@@ -682,6 +692,7 @@ static void TIM2_Config() {
 
   TIM_Cmd(TIM2, ENABLE);
 }
+//delay ms
 static void TIM5_Config() {
 	TIM_TimeBaseInitTypeDef TIM_InitStructure;
 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM5, ENABLE);
@@ -694,17 +705,30 @@ static void TIM5_Config() {
 
   TIM_Cmd(TIM5, ENABLE);
 }
+//TIM4 for PWM
 static void TIM4_Config() {
 	TIM_TimeBaseInitTypeDef TIM_InitStructure;
 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM4, ENABLE);
-	TIM_InitStructure.TIM_Period = 21000 - 1;
-  TIM_InitStructure.TIM_Prescaler = 4 - 1;
+	TIM_InitStructure.TIM_Period = 0xFFFF;
+  TIM_InitStructure.TIM_Prescaler = 84 - 1;
   TIM_InitStructure.TIM_ClockDivision = 0;
   TIM_InitStructure.TIM_CounterMode = TIM_CounterMode_Up;
 	TIM_TimeBaseInit(TIM4, &TIM_InitStructure);
   TIM_Cmd(TIM4, ENABLE);
 }
+//TIM3 delay for waterplant
+static void TIM3_Config() {
+	TIM_TimeBaseInitTypeDef TIM_InitStructure;
+	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3, ENABLE);
+	TIM_InitStructure.TIM_CounterMode = TIM_CounterMode_Up;
+	TIM_InitStructure.TIM_Prescaler = 84 - 1;
+	TIM_InitStructure.TIM_Period = 0xFFFF ; // Update event every overflow
+	TIM_InitStructure.TIM_ClockDivision = 0;
+  TIM_InitStructure.TIM_RepetitionCounter = 0;
+  TIM_TimeBaseInit(TIM3, &TIM_InitStructure);
 
+  TIM_Cmd(TIM3, ENABLE);
+}
 void mydelayus(unsigned int time) {
 
     TIM_SetCounter(TIM2,0);  //Load timer CNT = 0  
@@ -715,7 +739,10 @@ void mydelayms(unsigned int time) {
     TIM_SetCounter(TIM5,0);  //Load timer CNT = 0  
     while (TIM_GetCounter(TIM5) <= (time*2));
 }
-
+void delayus(unsigned int time) {
+	  TIM_SetCounter(TIM3,0);  //Load timer CNT = 0  
+    while (TIM_GetCounter(TIM3) <= time);
+}
 uint8_t mystrlength(volatile uint8_t *buffer) {
 	uint8_t countFF = 0;
 	for (uint8_t i = 0;;i++)
@@ -832,13 +859,13 @@ static void EXTI_Line1_Config() {
   /* Configure EXTI Line0 */
   EXTI_InitStructure.EXTI_Line = EXTI_Line1;
   EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
-  EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Falling;  
+  EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising;  
   EXTI_InitStructure.EXTI_LineCmd = ENABLE;
   EXTI_Init(&EXTI_InitStructure);
 
   /* Enable and set EXTI Line1 Interrupt to the 7 priority */
   NVIC_InitStructure.NVIC_IRQChannel = EXTI1_IRQn;
-  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 7;
+  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 6;
   NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
   NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
   NVIC_Init(&NVIC_InitStructure);
@@ -849,12 +876,13 @@ static void EXTI_Line1_Config() {
 	*/
 //***************************HMI***************************//
 SemaphoreHandle_t xSemaphoreUARTRX = NULL; // Semaphore UART from ISR
-SemaphoreHandle_t xSemaphoreDataHMI = NULL; // Semaphore notification has id and data
+SemaphoreHandle_t xSemaphoreChangepage = NULL; // Semaphore notification has id and data
 SemaphoreHandle_t xSemaphoreSonicSensor = NULL;
 SemaphoreHandle_t xSemaphoredosingInterval = NULL;
 SemaphoreHandle_t xSemaphoresensorsReady = NULL;
 SemaphoreHandle_t xSemaphoreHandleData = NULL;
-SemaphoreHandle_t xSemaphoreEXTI = NULL;
+SemaphoreHandle_t xSemaphoreHadData = NULL;
+SemaphoreHandle_t xSemaphoreEXTIZCD = NULL;
 //Semaphore for handle page's HMI
 
 xTaskHandle TaskpageHome;
@@ -934,10 +962,10 @@ void loadMachineLearning(float* a_sensor, float* a_previousSensor, float* a_sens
 int doubleToInt(float *a_value);
 float averageResults(unsigned int *a_array, bool *a_convertToFloat);
 float percentOutOfRange(const float a_setPoint, const float a_val);
-void runDosePHUP(uint8_t speed, uint8_t a_mlis);
-void runDosePHDOWN(uint8_t speed, uint8_t a_mlis);
-void runDoseGROUPA(uint8_t speed, uint8_t a_mlis);
-void runDoseGROUPB(uint8_t speed, uint8_t a_mlis);
+//void runDosePHUP(uint8_t speed, uint8_t a_mlis);
+//void runDosePHDOWN(uint8_t speed, uint8_t a_mlis);
+//void runDoseGROUPA(uint8_t speed, uint8_t a_mlis);
+//void runDoseGROUPB(uint8_t speed, uint8_t a_mlis);
 float speedtomils(uint8_t speed);
 
 void WaterPlants(void *pvParameters);
@@ -968,7 +996,8 @@ void TIM_Config()
 {
 	TIM2_Config(); // timer 32bit counter
 	TIM5_Config(); // timer 32bit counter
-	TIM4_Config(); // timer 16bit for pwm at 10khz.
+	//TIM4_Config(); // timer 16bit for pwm at 10khz.
+	TIM3_Config();
 }
 
 void EXTI_Config()
