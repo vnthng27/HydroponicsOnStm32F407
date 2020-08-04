@@ -17,8 +17,7 @@ int main(void) {
 	xSemaphoreHandleData = xSemaphoreCreateBinary();
 	xSemaphoreEXTIZCD = xSemaphoreCreateBinary();
 	xSemaphoreHadData = xSemaphoreCreateBinary();
-	GPIO_WriteBit(GPIOD,GPIO_Pin_2,Bit_SET);
-	GPIO_WriteBit(GPIOD,GPIO_Pin_3,Bit_SET);
+	SaveDataEvery3Minute = xSemaphoreCreateBinary();
 	
 	xTaskCreate(handleUARTRX, "xu ly data rev from hmi",  configMINIMAL_STACK_SIZE, NULL, 1, NULL);
 	xTaskCreate(handleHMI, "xu ly HMI",  configMINIMAL_STACK_SIZE, NULL, 1, NULL);
@@ -50,10 +49,10 @@ int main(void) {
 	xTaskCreate(pageFlow, "pageFlow",  configMINIMAL_STACK_SIZE, NULL, 1, &TaskpageFlow);
 	xTaskCreate(pageProfile, "pageProfile",  configMINIMAL_STACK_SIZE, NULL, 1, &TaskpageProfile);
 	xTaskCreate(pageFeritilizer, "pageFeritilizer",  configMINIMAL_STACK_SIZE, NULL, 1, &TaskpageFeritilizer);
-	//xTaskCreate(readSensor, "readSensor", 200, NULL, 1, NULL);
-	xTaskCreate(temperature_task, "temperature_task", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
-	xTaskCreate(sonic_task, "sonic_task", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
-	xTaskCreate(adc_task, "adc_task", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
+	xTaskCreate(readSensor, "readSensor", 200, NULL, 1, NULL);
+//	xTaskCreate(temperature_task, "temperature_task", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
+//	xTaskCreate(sonic_task, "sonic_task", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
+//	xTaskCreate(adc_task, "adc_task", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
 	//xTaskCreate(ControlWater, "ControlEnviromental", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
 //	xTaskCreate(WaterPlants, "WaterPlants", 200, NULL, 1, NULL);
 	vTaskStartScheduler();
@@ -120,12 +119,16 @@ void EXTI1_IRQHandler(void) {
 	portYIELD_FROM_ISR( xHigherPriorityTaskWoken );	
 }
 
+void EndData(void) {
+	char threeByteEnd[3] = {END_DATA,END_DATA,END_DATA};
+	USART3_puts(&threeByteEnd[0]);
+} // EndData();
 void pageHome(void *pvParameters) {
 	uint8_t prevHour = 0;
 	uint8_t prevMinute = 0;
 	char bufferSend[] = "";
-	prevHour = rtc_datetime.hour;
-	prevMinute = rtc_datetime.minutes;
+	prevHour = rtc_getdatetime.hour;
+	prevMinute = rtc_getdatetime.minutes;
 	uint8_t prevID = 10;
 	uint16_t preNumValSaved = 0;
 	vTaskSuspend(NULL);
@@ -133,16 +136,18 @@ void pageHome(void *pvParameters) {
 		prevpage = HOME;
 		if (reloadPage == true) {
 			prevID = 10;
+			preNumValSaved = 0;
 			reloadPage = false;
 		}
 		if (IDHMI == 0x00 && DataHMI[0] == 0) {
 			if (prevID != IDHMI ) {
 				USART3_puts("cle 19,0");
-				endData;
-				if (NumValSaved - 1 > 0 ) {
+				EndData();
+				if (NumValSaved > 0 ) {
 					preNumValSaved = NumValSaved;
-					sprintf(bufferSend,"addt 19,0,%d",(NumValSaved-1 > 0) ? NumValSaved-1:0);
+					sprintf(bufferSend,"addt 19,0,%d",NumValSaved);
 					USART3_puts(&bufferSend[0]);
+					EndData();
 					for (int j = 0; j<NumValSaved;j++) {
 						USART3_puts(&sensorPHinDay[j]);
 					}
@@ -151,51 +156,54 @@ void pageHome(void *pvParameters) {
 				prevID = IDHMI;
 				
 				USART3_puts("t0.txt=\"PPM\"");
-				endData;
+				EndData();
 				
 				USART3_puts("b0.bco=1024");
-				endData;
+				EndData();
 				USART3_puts("b1.bco=50712");
-				endData;
+				EndData();
 				USART3_puts("b3.bco=50712");
-				endData;
+				EndData();
 				USART3_puts("b2.bco=50712");
-				endData;
+				EndData();
 				
 				sprintf(bufferSend,"t4.txt=\"%d\"",tdsOffset);
 				USART3_puts(&bufferSend[0]);
-				endData;
+				EndData();
 				
 				sprintf(bufferSend,"t7.txt=\"%d\"",targetMinTds);
 				USART3_puts(&bufferSend[0]);
-				endData;
+				EndData();
 				
 				sprintf(bufferSend,"t8.txt=\"%d\"",targetMaxTds);
 				USART3_puts(&bufferSend[0]);
-				endData;
+				EndData();
 				
 			}
 			if (NumValSaved - preNumValSaved >0) {
-				preNumValSaved = NumValSaved;
 				sprintf(bufferSend,"addt 19,0,%d",NumValSaved - preNumValSaved);
+				USART3_puts(&bufferSend[0]);
+				EndData();
 				for (int j = preNumValSaved;j<NumValSaved;j++) {
 					USART3_puts(&sensorPHinDay[j]);
 				}
+				preNumValSaved = NumValSaved;
 			}
 			sprintf(bufferSend,"t3.txt=\"%0.1f\"",data_sensor[0]);
 			USART3_puts(&bufferSend[0]);
-			endData;
+			EndData();
 			xSemaphoreGive(xSemaphoreHandleData);
 			vTaskDelay(250/portTICK_PERIOD_MS);
 		}
 		else if (IDHMI == 0x02 && DataHMI[0] == 2) {
 			if (prevID != IDHMI) {
 				USART3_puts("cle 19,0");
-				endData;
-				if (NumValSaved - 1 > 0 ) {
+				EndData();
+				if (NumValSaved > 0 ) {
 					preNumValSaved = NumValSaved;
-					sprintf(bufferSend,"addt 19,0,%d",(NumValSaved-1 > 0) ? NumValSaved-1:0);
+					sprintf(bufferSend,"addt 19,0,%d",NumValSaved);
 					USART3_puts(&bufferSend[0]);
+					EndData();
 					for (int j = 0; j<NumValSaved;j++) {
 						USART3_puts(&sensorTEMPinDay[j]);
 					}
@@ -203,154 +211,150 @@ void pageHome(void *pvParameters) {
 				
 				prevID = IDHMI;
 				USART3_puts("t0.txt=\"TEMPERATURE\"");
-				endData;
+				EndData();
 				USART3_puts("b0.bco=50712");
-				endData;
+				EndData();
 				USART3_puts("b1.bco=1024");
-				endData;
+				EndData();
 				USART3_puts("b3.bco=50712");
-				endData;
+				EndData();
 				USART3_puts("b2.bco=50712");
-				endData;
+				EndData();
 				
 				USART3_puts("t4.txt=\"\"");
-				endData;
+				EndData();
 				USART3_puts("t7.txt=\"\"");
-				endData;
+				EndData();
 				USART3_puts("t8.txt=\"\"");
-				endData;
+				EndData();
 				
 			}
 
 			if (NumValSaved - preNumValSaved >0) {
 				sprintf(bufferSend,"addt 19,0,%d",NumValSaved - preNumValSaved);
+				USART3_puts(&bufferSend[0]);
+				EndData();
 				for (int j = preNumValSaved;j<NumValSaved;j++) {
 					USART3_puts(&sensorTEMPinDay[j]);
 				}
+				preNumValSaved = NumValSaved;
 			}
 			sprintf(bufferSend,"t3.txt=\"%0.1f\"",data_sensor[3]);
 			USART3_puts(&bufferSend[0]);
-			endData;
+			EndData();
 			xSemaphoreGive(xSemaphoreHandleData);
 			vTaskDelay(250/portTICK_PERIOD_MS);
 		}
 		else if (IDHMI == 0x03 && DataHMI[0] == 3) {
 			if (prevID != IDHMI) {
 				USART3_puts("cle 19,0");
-				endData;
-				if (NumValSaved - 1 > 0 ) {
+				EndData();
+				if (NumValSaved > 0 ) {
 					preNumValSaved = NumValSaved;
-					sprintf(bufferSend,"addt 19,0,%d",(NumValSaved-1 > 0) ? NumValSaved-1:0);
+					sprintf(bufferSend,"addt 19,0,%d",NumValSaved);
 					USART3_puts(&bufferSend[0]);
+					EndData();
 					for (int j = 0; j<NumValSaved;j++) {
 						USART3_puts(&sensorTANKinDay[j]);
 					}
 				}
 				prevID = IDHMI;
 				USART3_puts("t0.txt=\"TANK\"");
-				endData;
+				EndData();
 				USART3_puts("b0.bco=50712");
-				endData;
+				EndData();
 				USART3_puts("b1.bco=50712");
-				endData;
+				EndData();
 				USART3_puts("b3.bco=1024");
-				endData;
+				EndData();
 				USART3_puts("b2.bco=50712");
-				endData;
+				EndData();
 				
 				sprintf(bufferSend,"t4.txt=\"%d\"",TankLvOffset);
 				USART3_puts(&bufferSend[0]);
-				endData;
+				EndData();
 				sprintf(bufferSend,"t7.txt=\"%d\"",targetMinTankLv);
 				USART3_puts(&bufferSend[0]);
-				endData;
+				EndData();
 				sprintf(bufferSend,"t8.txt=\"%d\"",targetMaxTankLv);
 				USART3_puts(&bufferSend[0]);
-				endData;
+				EndData();
 				
 			}
 			
 			if (NumValSaved - preNumValSaved >0) {
 				sprintf(bufferSend,"addt 19,0,%d",NumValSaved - preNumValSaved);
+				USART3_puts(&bufferSend[0]);
+				EndData();
 				for (int j = preNumValSaved;j<NumValSaved;j++) {
 					USART3_puts(&sensorTANKinDay[j]);
 				}
+				preNumValSaved = NumValSaved;
 			}
-//			sprintf(bufferSend,"t3.txt=\"%0.1f\"",data_sensor[2]);
-//			USART3_puts(&bufferSend[0]);
-//			endData;
+			sprintf(bufferSend,"t3.txt=\"%0.1f\"",data_sensor[2]);
+			USART3_puts(&bufferSend[0]);
+			EndData();
 			xSemaphoreGive(xSemaphoreHandleData);
 			vTaskDelay(250/portTICK_PERIOD_MS);
 		}
 		else if (IDHMI == 0x04 && DataHMI[0] == 4) {
 			if (prevID != IDHMI) {
 				USART3_puts("cle 19,0");
-				endData;
-				if (NumValSaved - 1 > 0 ) {
+				EndData();
+				if (NumValSaved > 0 ) {
 					preNumValSaved = NumValSaved;
-					sprintf(bufferSend,"addt 19,0,%d",(NumValSaved-1 > 0) ? NumValSaved-1:0);
+					sprintf(bufferSend,"addt 19,0,%d",NumValSaved);
 					USART3_puts(&bufferSend[0]);
+					EndData();
 					for (int j = 0; j<NumValSaved;j++) {
 						USART3_puts(&sensorPHinDay[j]);
 					}
 				}
 				prevID = IDHMI;
 				USART3_puts("t0.txt=\"PH\"");
-				endData;
+				EndData();
 				USART3_puts("b0.bco=50712");
-				endData;
+				EndData();
 				USART3_puts("b1.bco=50712");
-				endData;
+				EndData();
 				USART3_puts("b3.bco=50712");
-				endData;
+				EndData();
 				USART3_puts("b2.bco=1024");
-				endData;
+				EndData();
 				
 				sprintf(bufferSend,"t4.txt=\"%0.1f\"",phOffset);
 				USART3_puts(&bufferSend[0]);
-				endData;
+				EndData();
 				sprintf(bufferSend,"t7.txt=\"%0.1f\"",targetMinPh);
 				USART3_puts(&bufferSend[0]);
-				endData;
+				EndData();
 				sprintf(bufferSend,"t8.txt=\"%0.1f\"",targetMaxPh);
 				USART3_puts(&bufferSend[0]);
-				endData;
+				EndData();
 			}
 
 			if (NumValSaved - preNumValSaved >0) {
 				sprintf(bufferSend,"addt 19,0,%d",NumValSaved - preNumValSaved);
+				USART3_puts(&bufferSend[0]);
+				EndData();
 				for (int j = preNumValSaved;j<NumValSaved;j++) {
 					USART3_puts(&sensorPHinDay[j]);
 				}
+				preNumValSaved = NumValSaved;
 			}
 			sprintf(bufferSend,"t3.txt=\"%0.1f\"",data_sensor[1]);
 			USART3_puts(&bufferSend[0]);
-			endData;
+			EndData();
 			xSemaphoreGive(xSemaphoreHandleData);
 			vTaskDelay(250/portTICK_PERIOD_MS);
 		}
 		else
 			xSemaphoreGive(xSemaphoreHandleData);
-		if (rtc_datetime.hour != prevHour) {
-			sprintf(bufferSend,"hour.val=%d",rtc_datetime.hour);
-			USART3_puts(&bufferSend[0]);
-			endData;
-			prevHour = rtc_datetime.hour;
-			vTaskDelay(250/portTICK_PERIOD_MS);
-		}
-		if (rtc_datetime.minutes != prevMinute) {
-			sprintf(bufferSend,"minute.txt=\"%d\"",rtc_datetime.minutes);
-			USART3_puts(&bufferSend[0]);
-			endData;
-			prevMinute = rtc_datetime.minutes;
-			vTaskDelay(250/portTICK_PERIOD_MS);
-		}
 	}
 }
 void pageWarning(void *pvParameters) {
 	uint8_t prevID = 10;
 	char bufferSend[] = "";
-	char threeByteEnd[3] = {0xFF,0xFF,0xFF};
 	vTaskSuspend(NULL);
 	while (1) {
 		prevpage = WARINING;
@@ -361,31 +365,30 @@ void pageWarning(void *pvParameters) {
 		if (IDHMI == 0 && DataHMI[0] == 0) {
 			if (prevID != IDHMI) {
 				USART3_puts("t2.txt=\"PPM WARNING\"");
-				endData;
+				EndData();
 				USART3_puts("b0.bco=1024");
-				endData;
+				EndData();
 				USART3_puts("b1.bco=50712");
-				endData;
+				EndData();
 				USART3_puts("b2.bco=50712");
-				endData;
+				EndData();
 				USART3_puts("b3.bco=50712");
-				endData;
+				EndData();
 			}
-			prevID = IDHMI;
-			
+			prevID = IDHMI;	
 		}
 		else if (IDHMI == 1 && DataHMI[0] == 1) {
 			if (prevID != IDHMI) {
 				USART3_puts("t2.txt=\"TEMPERATURE WARNING\"");
-				endData;
+				EndData();
 				USART3_puts("b0.bco=50712");
-				endData;
+				EndData();
 				USART3_puts("b1.bco=1024");
-				endData;
+				EndData();
 				USART3_puts("b2.bco=50712");
-				endData;
+				EndData();
 				USART3_puts("b3.bco=50712");
-				endData;
+				EndData();
 			}
 			prevID = IDHMI;
 			
@@ -393,67 +396,67 @@ void pageWarning(void *pvParameters) {
 		else if (IDHMI == 2 && DataHMI[0] == 2) {
 			if (prevID != IDHMI) {
 				USART3_puts("t2.txt=\"pH WARNING\"");
-				endData;
+				EndData();
 				USART3_puts("b0.bco=50712");
-				endData;
+				EndData();
 				USART3_puts("b1.bco=50712");
-				endData;
+				EndData();
 				USART3_puts("b2.bco=1024");
-				endData;
+				EndData();
 				USART3_puts("b3.bco=50712");
-				endData;
+				EndData();
 			}
 			prevID = IDHMI;
 		}
 		else if (IDHMI == 3 && DataHMI[0] == 3) {
 			if (prevID != IDHMI) {
 				USART3_puts("t2.txt=\"TANK WARNING\"");
-				endData;
+				EndData();
 				USART3_puts("b0.bco=50712");
-				endData;
+				EndData();
 				USART3_puts("b1.bco=50712");
-				endData;
+				EndData();
 				USART3_puts("b2.bco=50712");
-				endData;
+				EndData();
 				USART3_puts("b3.bco=1024");
-				endData;
+				EndData();
 			}
 			prevID = IDHMI;
 		}
 		if (prevID == 0) {
 			sprintf(bufferSend,"t3.txt=\"%0.1f\"",data_sensor[0]);
 			USART3_puts(&bufferSend[0]);
-			endData; 	
+			EndData(); 	
 			sprintf(bufferSend,"t1.txt=\"%f\"",errorMarginPPM);
 			USART3_puts(&bufferSend[0]);
-			endData;
+			EndData();
 			xSemaphoreGive(xSemaphoreHandleData);
 		}
 		if (prevID == 1) {
 			sprintf(bufferSend,"t3.txt=\"%0.1f\"",data_sensor[3]);
 			USART3_puts(&bufferSend[0]);
-			endData;
+			EndData();
 			sprintf(bufferSend,"t1.txt=\"%0.1f\"",errorMarginTEMP);
 			USART3_puts(&bufferSend[0]);
-			endData;
+			EndData();
 			xSemaphoreGive(xSemaphoreHandleData);
 		}
 		if (prevID == 2) {
 			sprintf(bufferSend,"t3.txt=\"%0.1f\"",data_sensor[1]);
 			USART3_puts(&bufferSend[0]);
-			endData;
+			EndData();
 			sprintf(bufferSend,"x0.val=%d",(uint8_t)(errorMarginPH*10));
 			USART3_puts(&bufferSend[0]);
-			endData;
+			EndData();
 			xSemaphoreGive(xSemaphoreHandleData);
 		}
 		if (prevID == 3) {
 			sprintf(bufferSend,"t3.txt=\"%0.1f\"",data_sensor[2]);
 			USART3_puts(&bufferSend[0]);
-			endData;
+			EndData();
 			sprintf(bufferSend,"t1.txt=\"%d\"",(uint16_t)errorMarginTANK);
 			USART3_puts(&bufferSend[0]);
-			endData;
+			EndData();
 			xSemaphoreGive(xSemaphoreHandleData);	
 		}
 		if (IDHMI == 5 ) {
@@ -473,13 +476,22 @@ void pageWarning(void *pvParameters) {
 	}
 }
 void pageWifi(void *pvParameters) {
+	char bufferSend[] = "";
 	vTaskSuspend(NULL);
 	while (1) {
-		if (IDHMI == 0) {
+		prevpage = WIFI;
+		if (reloadPage == true) 
+		{
+			sprintf(bufferSend,"n0.val=%d",WifiInterval);
+			USART3_puts(&bufferSend[0]);
+			EndData();
+			reloadPage = false;
+		}
+		if (IDHMI == 0x01) {
 			WifiInterval = (uint16_t)((DataHMI[1]<<8) | DataHMI[0]);
 		}
 		xSemaphoreGive(xSemaphoreHandleData);
-		reloadPage = false;
+
 		vTaskDelay(150/portTICK_PERIOD_MS);
 	}
 }
@@ -487,28 +499,20 @@ void pagePPM(void *pvParameters) {
 	char bufferSend[] = "";
 	vTaskSuspend(NULL);
 	while (1) {
-//		if (reloadPage == true) {
-//			sprintf(bufferSend,"min.val=%d",targetMinTdsALL);
-//			USART3_puts(&bufferSend[0]);
-//			endData;
-//			sprintf(bufferSend,"max.val=%d",targetMaxTdsALL);
-//			USART3_puts(&bufferSend[0]);
-//			endData;
-//			sprintf(bufferSend,"tol.val=%d",tdsOffsetALL);
-//			USART3_puts(&bufferSend[0]);
-//			endData;
-//			sprintf(bufferSend,"t4.txt=\"%d\"",targetMinTdsALL);
-//			USART3_puts(&bufferSend[0]);
-//			endData;
-//			sprintf(bufferSend,"t5.txt=\"%d\"",targetMaxTdsALL);
-//			USART3_puts(&bufferSend[0]);
-//			endData;
-//			sprintf(bufferSend,"t6.txt=\"%d\"",tdsOffsetALL);
-//			USART3_puts(&bufferSend[0]);
-//			endData;
-//			reloadPage = false;
-//		}
-		if (xSemaphoreTake( xSemaphoreHadData,portMAX_DELAY) == pdTRUE) {
+		prevpage = PPM;
+		if (reloadPage == true) {
+			sprintf(bufferSend,"n0.val=%d",targetMinTdsALL);
+			USART3_puts(&bufferSend[0]);
+			EndData();
+			sprintf(bufferSend,"n1.val=%d",targetMaxTdsALL);
+			USART3_puts(&bufferSend[0]);
+			EndData();
+			sprintf(bufferSend,"n2.val=%d",tdsOffsetALL);
+			USART3_puts(&bufferSend[0]);
+			EndData();
+			reloadPage = false;
+		}
+		if (xSemaphoreTake( xSemaphoreHadData,1000) == pdTRUE) {
 			if (IDHMI == 1) {
 				targetMinTdsALL = (unsigned int)((DataHMI[1]<<8) | DataHMI[0]);
 		
@@ -517,25 +521,192 @@ void pagePPM(void *pvParameters) {
 				tdsOffsetALL = (unsigned int)((DataHMI[5]<<8) | DataHMI[4]);
 			}
 			xSemaphoreGive(xSemaphoreHandleData);
-		}	
+		}
 	}
 }
 void pagePPM2(void *pvParameters) {
+	char bufferSend[] = "";
+	uint8_t NumDay = 0;
+	const uint16_t Green = 1024;
+	const uint16_t Red = 63488;
+	const uint16_t Blue = 255;
+	const uint16_t Yellow = 65504;
+	const uint16_t Purple = 32784;
+	uint8_t count = 0;
 	vTaskSuspend(NULL);
 	while (1) {
-		vTaskDelete(NULL);
+		prevpage = PPM2;
+		if (reloadPage == true) {
+			count = 0;
+			while (DayPPMStageOne[count] != 0) {
+				sprintf(bufferSend,"n%d.bco=%d",DayPPMStageOne[count],Green);
+				USART3_puts(&bufferSend[0]);
+				EndData();
+				count++;
+			}
+			
+			count = 0;
+			while (DayPPMStageTwo[count] != 0) {
+				sprintf(bufferSend,"n%d.bco=%d",DayPPMStageTwo[count],Red);
+				USART3_puts(&bufferSend[0]);
+				EndData();
+				count++;
+			}
+			
+			count = 0;
+			while (DayPPMStageThree[count] != 0) {
+				sprintf(bufferSend,"n%d.bco=%d",DayPPMStageThree[count],Yellow);
+				USART3_puts(&bufferSend[0]);
+				EndData();
+				count++;
+			}
+
+			count = 0;
+			while (DayPPMStageFour[count] != 0) {
+				sprintf(bufferSend,"n%d.bco=%d",DayPPMStageFour[count],Blue);
+				USART3_puts(&bufferSend[0]);
+				EndData();
+				count++;
+			}
+			
+			count = 0;
+			while (DayPPMStageFive[count] != 0) {
+				sprintf(bufferSend,"n%d.bco=%d",DayPPMStageFive[count],Purple);
+				USART3_puts(&bufferSend[0]);
+				EndData();
+				count++;
+			}
+
+			sprintf(bufferSend,"va0.val=%d",PPMStage[0]);
+			USART3_puts(&bufferSend[0]);
+			EndData();
+			sprintf(bufferSend,"n32.val=%d",PPMStage[0]);
+			USART3_puts(&bufferSend[0]);
+			EndData();
+			
+			sprintf(bufferSend,"va1.val=%d",PPMStage[1]);
+			USART3_puts(&bufferSend[0]);
+			EndData();
+			
+			sprintf(bufferSend,"va2.val=%d",PPMStage[2]);
+			USART3_puts(&bufferSend[0]);
+			EndData();
+			
+			sprintf(bufferSend,"va3.val=%d",PPMStage[3]);
+			USART3_puts(&bufferSend[0]);
+			EndData();
+			
+			sprintf(bufferSend,"va4.val=%d",PPMStage[4]);
+			USART3_puts(&bufferSend[0]);
+			EndData();		
+			
+			reloadPage = false;
+		}
+		if (xSemaphoreTake( xSemaphoreHadData,1000) == pdTRUE) {
+			if (IDHMI == 0x03) {
+				count = 0;
+				PPMStage[0] = (uint16_t)((DataHMI[1]<<8) | DataHMI[0]);
+				while (DataHMI[count+2] != 0) {
+					DayPPMStageOne[count] = DataHMI[count+2];
+					count ++ ;
+				}
+				xSemaphoreGive(xSemaphoreHandleData);
+			}
+			if (IDHMI == 0x04) {
+				count = 0;
+				PPMStage[1] = (uint16_t)((DataHMI[1]<<8) | DataHMI[0]);
+				while (DataHMI[count+2] != 0) {
+					DayPPMStageTwo[count] = DataHMI[count+2];
+					count ++ ;
+				}
+				xSemaphoreGive(xSemaphoreHandleData);
+			}
+			if (IDHMI == 0x05) {
+				count = 0;
+				PPMStage[2] = (uint16_t)((DataHMI[1]<<8) | DataHMI[0]);
+				while (DataHMI[count+2] != 0) {
+					DayPPMStageThree[count] = DataHMI[count+2];
+					count ++ ;
+				}
+				xSemaphoreGive(xSemaphoreHandleData);
+			}
+			if (IDHMI == 0x06) {
+				count = 0;
+				PPMStage[3] = (uint16_t)((DataHMI[1]<<8) | DataHMI[0]);
+				while (DataHMI[count+2] != 0) {
+					DayPPMStageFour[count] = DataHMI[count+2];
+					count ++ ;
+				}
+				xSemaphoreGive(xSemaphoreHandleData);
+			}
+			if (IDHMI == 0x07) {
+				count = 0;
+				PPMStage[4] = (uint16_t)((DataHMI[1]<<8) | DataHMI[0]);
+				while (DataHMI[count+2] != 0) {
+					DayPPMStageFive[count] = DataHMI[count+2];
+					count ++ ;
+				}
+				xSemaphoreGive(xSemaphoreHandleData);
+			}
+		}
 	}
 }
 void pagepH(void *pvParameters) {
+	char bufferSend[] = "";
 	vTaskSuspend(NULL);
 	while (1) {
-		vTaskDelete(NULL);
+		prevpage = PH;
+		if (reloadPage == true) {
+			sprintf(bufferSend,"x0.val=%d",(uint16_t)(targetMinPh*10));
+			USART3_puts(&bufferSend[0]);
+			EndData();
+			sprintf(bufferSend,"x1.val=%d",(uint16_t)(targetMaxPh*10));
+			USART3_puts(&bufferSend[0]);
+			EndData();
+			sprintf(bufferSend,"x2.val=%d",(uint16_t)(phOffset*10));
+			USART3_puts(&bufferSend[0]);
+			EndData();
+			reloadPage = false;
+		}
+		if (xSemaphoreTake( xSemaphoreHadData,1000) == pdTRUE) {
+			if (IDHMI == 1) {
+				targetMinPh = (float)(((DataHMI[1]<<8) | DataHMI[0])/10);
+		
+				targetMaxPh = (float)(((DataHMI[3]<<8) | DataHMI[2])/10);
+				
+				phOffset = (float)(((DataHMI[5]<<8) | DataHMI[4])/10);
+			}
+			xSemaphoreGive(xSemaphoreHandleData);
+		}
 	}
 }
 void pageTank(void *pvParameters) {
+	char bufferSend[] = "";
 	vTaskSuspend(NULL);
 	while (1) {
-		vTaskDelete(NULL);
+		prevpage = TANK;
+		if (reloadPage == true) {
+			sprintf(bufferSend,"n0.val=%d",targetMinTankLv);
+			USART3_puts(&bufferSend[0]);
+			EndData();
+			sprintf(bufferSend,"n1.val=%d",targetMaxTankLv);
+			USART3_puts(&bufferSend[0]);
+			EndData();
+			sprintf(bufferSend,"n2.val=%d",TankLvOffset);
+			USART3_puts(&bufferSend[0]);
+			EndData();
+			reloadPage = false;
+		}
+		if (xSemaphoreTake( xSemaphoreHadData,1000) == pdTRUE) {
+			if (IDHMI == 1) {
+				targetMinTankLv = (uint16_t)((DataHMI[1]<<8) | DataHMI[0]);
+		
+				targetMaxTankLv = (uint16_t)((DataHMI[3]<<8) | DataHMI[2]);
+				
+				TankLvOffset = (uint16_t)((DataHMI[5]<<8) | DataHMI[4]);
+			}
+			xSemaphoreGive(xSemaphoreHandleData);
+		}
 	}
 }
 void pageTank2(void *pvParameters) {
@@ -545,45 +716,732 @@ void pageTank2(void *pvParameters) {
 	}
 }
 void pageValve(void *pvParameters) {
+	char bufferSend[] = "";
 	vTaskSuspend(NULL);
 	while (1) {
-		vTaskDelete(NULL);
+		prevpage = VALVE;
+		if (reloadPage == true) {
+			switch (ValveOneInfo[0]) {
+				case 0x00: {
+					USART3_puts("t7.txt=\"NONE\"");
+					EndData();
+					break;
+				}
+				case 0x01: {
+					USART3_puts("t7.txt=\"OUT\"");
+					EndData();
+					break;
+				}
+				case 0x02: {
+					USART3_puts("t7.txt=\"IN\"");
+					EndData();
+					break;
+				}
+				case 0x03: {
+					USART3_puts("t7.txt=\"DRAIN\"");
+					EndData();
+					break;
+				}
+				case 0x04: {
+					USART3_puts("t7.txt=\"SUP\"");
+					EndData();
+					break;
+				}
+			}
+			switch (ValveOneInfo[1]) {
+				case 0x00: {
+					USART3_puts("t1.txt=\"NONE\"");
+					EndData();
+					break;
+				}
+				case 0x01: {
+					USART3_puts("t1.txt=\"OUT\"");
+					EndData();
+					break;
+				}
+				case 0x02: {
+					USART3_puts("t1.txt=\"IN\"");
+					EndData();
+					break;
+				}
+				case 0x03: {
+					USART3_puts("t1.txt=\"DRAIN\"");
+					EndData();
+					break;
+				}
+				case 0x04: {
+					USART3_puts("t1.txt=\"SUP\"");
+					EndData();
+					break;
+				}
+			}
+			switch (ValveOneInfo[2]) {
+				case 0x00: {
+					USART3_puts("t2.txt=\"NO\"");
+					EndData();
+					break;
+				}
+				case 0x01: {
+					USART3_puts("t2.txt=\"NC\"");
+					EndData();
+					break;
+				}
+			}
+			switch (ValveTwoInfo[0]) {
+				case 0x00: {
+					USART3_puts("t8.txt=\"NONE\"");
+					EndData();
+					break;
+				}
+				case 0x01: {
+					USART3_puts("t8.txt=\"OUT\"");
+					EndData();
+					break;
+				}
+				case 0x02: {
+					USART3_puts("t8.txt=\"IN\"");
+					EndData();
+					break;
+				}
+				case 0x03: {
+					USART3_puts("t8.txt=\"DRAIN\"");
+					EndData();
+					break;
+				}
+				case 0x04: {
+					USART3_puts("t8.txt=\"SUP\"");
+					EndData();
+					break;
+				}
+			}
+			switch (ValveTwoInfo[1]) {
+				case 0x00: {
+					USART3_puts("t3.txt=\"NONE\"");
+					EndData();
+					break;
+				}
+				case 0x01: {
+					USART3_puts("t3.txt=\"OUT\"");
+					EndData();
+					break;
+				}
+				case 0x02: {
+					USART3_puts("t3.txt=\"IN\"");
+					EndData();
+					break;
+				}
+				case 0x03: {
+					USART3_puts("t3.txt=\"DRAIN\"");
+					EndData();
+					break;
+				}
+				case 0x04: {
+					USART3_puts("t3.txt=\"SUP\"");
+					EndData();
+					break;
+				}
+			}
+			switch (ValveTwoInfo[2]) {
+				case 0x00: {
+					USART3_puts("t4.txt=\"NO\"");
+					EndData();
+					break;
+				}
+				case 0x01: {
+					USART3_puts("t4.txt=\"NC\"");
+					EndData();
+					break;
+				}
+			}
+			switch (ValveThreeInfo[0]) {
+				case 0x00: {
+					USART3_puts("t9.txt=\"NONE\"");
+					EndData();
+					break;
+				}
+				case 0x01: {
+					USART3_puts("t9.txt=\"OUT\"");
+					EndData();
+					break;
+				}
+				case 0x02: {
+					USART3_puts("t9.txt=\"IN\"");
+					EndData();
+					break;
+				}
+				case 0x03: {
+					USART3_puts("t9.txt=\"DRAIN\"");
+					EndData();
+					break;
+				}
+				case 0x04: {
+					USART3_puts("t9.txt=\"SUP\"");
+					EndData();
+					break;
+				}
+			}
+			switch (ValveThreeInfo[1]) {
+				case 0x00: {
+					USART3_puts("t5.txt=\"NONE\"");
+					EndData();
+					break;
+				}
+				case 0x01: {
+					USART3_puts("t5.txt=\"OUT\"");
+					EndData();
+					break;
+				}
+				case 0x02: {
+					USART3_puts("t5.txt=\"IN\"");
+					EndData();
+					break;
+				}
+				case 0x03: {
+					USART3_puts("t5.txt=\"DRAIN\"");
+					EndData();
+					break;
+				}
+				case 0x04: {
+					USART3_puts("t5.txt=\"SUP\"");
+					EndData();
+					break;
+				}
+			}
+			switch (ValveThreeInfo[2]) {
+				case 0x00: {
+					USART3_puts("t6.txt=\"NO\"");
+					EndData();
+					break;
+				}
+				case 0x01: {
+					USART3_puts("t6.txt=\"NC\"");
+					EndData();
+					break;
+				}
+			}
+			reloadPage = false;
+		}	
+		if (xSemaphoreTake( xSemaphoreHadData,1000) == pdTRUE) {
+			if (IDHMI == 0) {
+				ValveOneInfo[0] = DataHMI[0];
+				ValveOneInfo[1] = DataHMI[1];
+				ValveOneInfo[2] = DataHMI[2];
+			}
+			if (IDHMI == 1) {
+				ValveTwoInfo[0] = DataHMI[0];
+				ValveTwoInfo[1] = DataHMI[1];
+				ValveTwoInfo[2] = DataHMI[2];
+			}
+			if (IDHMI == 2) {
+				ValveThreeInfo[0] = DataHMI[0];
+				ValveThreeInfo[1] = DataHMI[1];
+				ValveThreeInfo[2] = DataHMI[2];
+			}
+			xSemaphoreGive(xSemaphoreHandleData);
+		}
 	}
 }
 void pageValve2(void *pvParameters) {
+	char bufferSend[] = "";
 	vTaskSuspend(NULL);
 	while (1) {
-		vTaskDelete(NULL);
+		prevpage = VALVE;
+		if (reloadPage == true) {
+			switch (ValveFourInfo[0]) {
+				case 0x00: {
+					USART3_puts("t7.txt=\"NONE\"");
+					EndData();
+					break;
+				}
+				case 0x01: {
+					USART3_puts("t7.txt=\"OUT\"");
+					EndData();
+					break;
+				}
+				case 0x02: {
+					USART3_puts("t7.txt=\"IN\"");
+					EndData();
+					break;
+				}
+				case 0x03: {
+					USART3_puts("t7.txt=\"DRAIN\"");
+					EndData();
+					break;
+				}
+				case 0x04: {
+					USART3_puts("t7.txt=\"SUP\"");
+					EndData();
+					break;
+				}
+			}
+			switch (ValveFourInfo[1]) {
+				case 0x00: {
+					USART3_puts("t1.txt=\"NONE\"");
+					EndData();
+					break;
+				}
+				case 0x01: {
+					USART3_puts("t1.txt=\"OUT\"");
+					EndData();
+					break;
+				}
+				case 0x02: {
+					USART3_puts("t1.txt=\"IN\"");
+					EndData();
+					break;
+				}
+				case 0x03: {
+					USART3_puts("t1.txt=\"DRAIN\"");
+					EndData();
+					break;
+				}
+				case 0x04: {
+					USART3_puts("t1.txt=\"SUP\"");
+					EndData();
+					break;
+				}
+			}
+			switch (ValveFourInfo[2]) {
+				case 0x00: {
+					USART3_puts("t2.txt=\"NO\"");
+					EndData();
+					break;
+				}
+				case 0x01: {
+					USART3_puts("t2.txt=\"NC\"");
+					EndData();
+					break;
+				}
+			}
+			switch (ValveFiveInfo[0]) {
+				case 0x00: {
+					USART3_puts("t8.txt=\"NONE\"");
+					EndData();
+					break;
+				}
+				case 0x01: {
+					USART3_puts("t8.txt=\"OUT\"");
+					EndData();
+					break;
+				}
+				case 0x02: {
+					USART3_puts("t8.txt=\"IN\"");
+					EndData();
+					break;
+				}
+				case 0x03: {
+					USART3_puts("t8.txt=\"DRAIN\"");
+					EndData();
+					break;
+				}
+				case 0x04: {
+					USART3_puts("t8.txt=\"SUP\"");
+					EndData();
+					break;
+				}
+			}
+			switch (ValveFiveInfo[1]) {
+				case 0x00: {
+					USART3_puts("t3.txt=\"NONE\"");
+					EndData();
+					break;
+				}
+				case 0x01: {
+					USART3_puts("t3.txt=\"OUT\"");
+					EndData();
+					break;
+				}
+				case 0x02: {
+					USART3_puts("t3.txt=\"IN\"");
+					EndData();
+					break;
+				}
+				case 0x03: {
+					USART3_puts("t3.txt=\"DRAIN\"");
+					EndData();
+					break;
+				}
+				case 0x04: {
+					USART3_puts("t3.txt=\"SUP\"");
+					EndData();
+					break;
+				}
+			}
+			switch (ValveFiveInfo[2]) {
+				case 0x00: {
+					USART3_puts("t4.txt=\"NO\"");
+					EndData();
+					break;
+				}
+				case 0x01: {
+					USART3_puts("t4.txt=\"NC\"");
+					EndData();
+					break;
+				}
+			}
+			switch (ValveSixInfo[0]) {
+				case 0x00: {
+					USART3_puts("t9.txt=\"NONE\"");
+					EndData();
+					break;
+				}
+				case 0x01: {
+					USART3_puts("t9.txt=\"OUT\"");
+					EndData();
+					break;
+				}
+				case 0x02: {
+					USART3_puts("t9.txt=\"IN\"");
+					EndData();
+					break;
+				}
+				case 0x03: {
+					USART3_puts("t9.txt=\"DRAIN\"");
+					EndData();
+					break;
+				}
+				case 0x04: {
+					USART3_puts("t9.txt=\"SUP\"");
+					EndData();
+					break;
+				}
+			}
+			switch (ValveSixInfo[1]) {
+				case 0x00: {
+					USART3_puts("t5.txt=\"NONE\"");
+					EndData();
+					break;
+				}
+				case 0x01: {
+					USART3_puts("t5.txt=\"OUT\"");
+					EndData();
+					break;
+				}
+				case 0x02: {
+					USART3_puts("t5.txt=\"IN\"");
+					EndData();
+					break;
+				}
+				case 0x03: {
+					USART3_puts("t5.txt=\"DRAIN\"");
+					EndData();
+					break;
+				}
+				case 0x04: {
+					USART3_puts("t5.txt=\"SUP\"");
+					EndData();
+					break;
+				}
+			}
+			switch (ValveSixInfo[2]) {
+				case 0x00: {
+					USART3_puts("t6.txt=\"NO\"");
+					EndData();
+					break;
+				}
+				case 0x01: {
+					USART3_puts("t6.txt=\"NC\"");
+					EndData();
+					break;
+				}
+			}
+			reloadPage = false;
+		}
+		if (xSemaphoreTake( xSemaphoreHadData,1000) == pdTRUE) {
+			if (IDHMI == 0x01) {
+				ValveFourInfo[0] = DataHMI[0];
+				ValveFourInfo[1] = DataHMI[1];
+				ValveFourInfo[2] = DataHMI[2];
+			}
+			if (IDHMI == 0x02) {
+				ValveFiveInfo[0] = DataHMI[0];
+				ValveFiveInfo[1] = DataHMI[1];
+				ValveFiveInfo[2] = DataHMI[2];
+			}
+			if (IDHMI == 0x03) {
+				ValveSixInfo[0] = DataHMI[0];
+				ValveSixInfo[1] = DataHMI[1];
+				ValveSixInfo[2] = DataHMI[2];
+			}
+			xSemaphoreGive(xSemaphoreHandleData);
+		}
 	}
 }
 void pagePeristaltic(void *pvParameters) {
+	char bufferSend[] = "";
 	vTaskSuspend(NULL);
 	while (1) {
-		vTaskDelete(NULL);
+		prevpage = PERISTALTIC_PUMP;
+		if (reloadPage == true) {
+			sprintf(bufferSend,"n0.val=%d",PerPumpOneInfo[0]);
+			USART3_puts(&bufferSend[0]);
+			EndData();
+			sprintf(bufferSend,"h0.val=%d",PerPumpOneInfo[0]);
+			USART3_puts(&bufferSend[0]);
+			EndData();
+			switch (PerPumpOneInfo[1]) {
+				case 0x00: {
+					USART3_puts("t2.txt=\"A\"");
+					EndData();
+				}
+				case 0x01: {
+					USART3_puts("t2.txt=\"B\"");
+					EndData();
+				}
+				case 0x02: {
+					USART3_puts("t2.txt=\"PH UP\"");
+					EndData();
+				}
+				case 0x03: {
+					USART3_puts("t2.txt=\"PH DOWN\"");
+					EndData();
+				}
+			}
+			sprintf(bufferSend,"n1.val=%d",PerPumpTwoInfo[0]);
+			USART3_puts(&bufferSend[0]);
+			EndData();
+			sprintf(bufferSend,"h1.val=%d",PerPumpTwoInfo[0]);
+			USART3_puts(&bufferSend[0]);
+			EndData();
+			
+			switch (PerPumpTwoInfo[1]) {
+				case 0x00: {
+					USART3_puts("t1.txt=\"A\"");
+					EndData();
+				}
+				case 0x01: {
+					USART3_puts("t1.txt=\"B\"");
+					EndData();
+				}
+				case 0x02: {
+					USART3_puts("t1.txt=\"PH UP\"");
+					EndData();
+				}
+				case 0x03: {
+					USART3_puts("t1.txt=\"PH DOWN\"");
+					EndData();
+				}
+			}
+			
+			sprintf(bufferSend,"n2.val=%d",PerPumpThreeInfo[0]);
+			USART3_puts(&bufferSend[0]);
+			EndData();
+			sprintf(bufferSend,"h2.val=%d",PerPumpThreeInfo[0]);
+			USART3_puts(&bufferSend[0]);
+			EndData();
+			
+			switch (PerPumpThreeInfo[1]) {
+				case 0x00: {
+					USART3_puts("t3.txt=\"A\"");
+					EndData();
+				}
+				case 0x01: {
+					USART3_puts("t3.txt=\"B\"");
+					EndData();
+				}
+				case 0x02: {
+					USART3_puts("t3.txt=\"PH UP\"");
+					EndData();
+				}
+				case 0x03: {
+					USART3_puts("t3.txt=\"PH DOWN\"");
+					EndData();
+				}
+			}
+			
+			sprintf(bufferSend,"n3.val=%d",PerPumpThreeInfo[0]);
+			USART3_puts(&bufferSend[0]);
+			EndData();
+			sprintf(bufferSend,"h3.val=%d",PerPumpThreeInfo[0]);
+			USART3_puts(&bufferSend[0]);
+			EndData();
+			
+			switch (PerPumpFourInfo[1]) {
+				case 0x00: {
+					USART3_puts("t4.txt=\"A\"");
+					EndData();
+				}
+				case 0x01: {
+					USART3_puts("t4.txt=\"B\"");
+					EndData();
+				}
+				case 0x02: {
+					USART3_puts("t4.txt=\"PH UP\"");
+					EndData();
+				}
+				case 0x03: {
+					USART3_puts("t4.txt=\"PH DOWN\"");
+					EndData();
+				}
+			}
+			reloadPage = false;
+		}
+		if (xSemaphoreTake(xSemaphoreHadData,1000) == pdTRUE) {
+			if (IDHMI == 0) {
+				PerPumpOneInfo[0] = DataHMI[0];
+				PerPumpOneInfo[1] = DataHMI[1];
+			}
+			if (IDHMI == 1) {
+				PerPumpTwoInfo[0] = DataHMI[0];
+				PerPumpTwoInfo[1] = DataHMI[1];
+			}
+			if (IDHMI == 2) {
+				PerPumpThreeInfo[0] = DataHMI[0];
+				PerPumpThreeInfo[1] = DataHMI[1];
+			}
+			if (IDHMI == 3) {
+				PerPumpFourInfo[0] = DataHMI[0];
+				PerPumpFourInfo[1] = DataHMI[1];
+			}
+			xSemaphoreGive(xSemaphoreHandleData);
+		}
 	}
 }
 void pagePump(void *pvParameters) {
+	char bufferSend[] = "";
 	vTaskSuspend(NULL);
 	while (1) {
-		vTaskDelete(NULL);
+		prevpage = PUMP;
+		if (reloadPage == true) {
+			sprintf(bufferSend,"n0.val=%d",PumpAcOneInfo[0]);
+			USART3_puts(&bufferSend[0]);
+			EndData();
+			sprintf(bufferSend,"h1.val=%d",PumpAcOneInfo[0]);
+			USART3_puts(&bufferSend[0]);
+			EndData();
+			switch (PumpAcOneInfo[1]) {
+				case 0x00: {
+					USART3_puts("t1.txt=\"OUT\"");
+					EndData();
+				}
+				case 0x01: {
+					USART3_puts("t2.txt=\"IN\"");
+					EndData();
+				}
+			}
+			
+			sprintf(bufferSend,"n1.val=%d",PumpAcTwoInfo[0]);
+			USART3_puts(&bufferSend[0]);
+			EndData();
+			sprintf(bufferSend,"h0.val=%d",PumpAcTwoInfo[0]);
+			USART3_puts(&bufferSend[0]);
+			EndData();
+			switch (PumpAcTwoInfo[1]) {
+				case 0x00: {
+					USART3_puts("t1.txt=\"OUT\"");
+					EndData();
+				}
+				case 0x01: {
+					USART3_puts("t2.txt=\"IN\"");
+					EndData();
+				}
+			}
+			reloadPage = false;
+		}
+		if (xSemaphoreTake( xSemaphoreHadData,1000) == pdTRUE) {
+			if (IDHMI == 0) {
+				PumpAcOneInfo[0] = DataHMI[0];
+				PumpAcOneInfo[1] = DataHMI[1];
+			}
+			if (IDHMI == 1) {
+				PumpAcTwoInfo[0] = DataHMI[0];
+				PumpAcTwoInfo[1] = DataHMI[1];
+			}
+			xSemaphoreGive(xSemaphoreHandleData);
+		}
 	}
 }
 void pagePump2(void *pvParameters) {
+	char bufferSend[] = "";
 	vTaskSuspend(NULL);
 	while (1) {
-		vTaskDelete(NULL);
+		prevpage = PUMP2;
+		if (reloadPage == true) {
+			for (uint8_t i = 0;i<56;i++)
+			{
+				sprintf(bufferSend,"n%d.val=%d",i,TimeWaterthePlants[i]);
+				USART3_puts(&bufferSend[0]);
+				EndData();
+			}
+			reloadPage = false;
+		}
+		if (xSemaphoreTake( xSemaphoreHadData,1000) == pdTRUE) {
+			if (IDHMI == 2) {
+				memcpy(TimeWaterthePlants,DataHMI,56);
+			}
+			xSemaphoreGive(xSemaphoreHandleData);
+		}
+			
 	}
 }
 void pagePump3(void *pvParameters) {
+	char bufferSend[] = "";
 	vTaskSuspend(NULL);
 	while (1) {
-		vTaskDelete(NULL);
+		prevpage = PUMP3;
+		if (reloadPage == true) {
+			for (uint8_t i = 56;i<110;i++)
+			{
+				sprintf(bufferSend,"n%d.val=%d",i-56,TimeWaterthePlants[i]);
+				USART3_puts(&bufferSend[0]);
+				EndData();
+			}
+			reloadPage = false;
+		}
+		if (xSemaphoreTake( xSemaphoreHadData,1000) == pdTRUE) {
+			if (IDHMI == 3) {
+				for (uint8_t i = 56;i <111;i++)
+				{
+					TimeWaterthePlants[i] = DataHMI[i-56];
+				}
+			}
+			xSemaphoreGive(xSemaphoreHandleData);
+		}
+			
 	}
 }
 void pagePump4(void *pvParameters) {
+	char bufferSend[] = "";
 	vTaskSuspend(NULL);
 	while (1) {
-		vTaskDelete(NULL);
+		prevpage = PUMP4;
+		if (reloadPage == true) {
+			if (DayWaterthePlants[0] == 0x01) {
+				USART3_puts("b1.bco=1024");
+				EndData();
+			}
+			if (DayWaterthePlants[1] == 0x02) {
+				USART3_puts("b2.bco=1024");
+				EndData();
+			}
+			if (DayWaterthePlants[2] == 0x03) {
+				USART3_puts("b3.bco=1024");
+				EndData();
+			}
+			if (DayWaterthePlants[3] == 0x04) {
+				USART3_puts("b4.bco=1024");
+				EndData();
+			}
+			if (DayWaterthePlants[4] == 0x05) {
+				USART3_puts("b5.bco=1024");
+				EndData();
+			}
+			if (DayWaterthePlants[5] == 0x06) {
+				USART3_puts("b6.bco=1024");
+				EndData();
+			}
+			if (DayWaterthePlants[6] == 0x07) {
+				USART3_puts("b7.bco=1024");
+				EndData();
+			}
+			reloadPage = false;
+		}
+		if (xSemaphoreTake( xSemaphoreHadData,1000) == pdTRUE) {
+			if (IDHMI == 4) {
+				memcpy(DayWaterthePlants,DataHMI,7);
+			}
+			xSemaphoreGive(xSemaphoreHandleData);
+		}
 	}
 }
 void pagePump5(void *pvParameters) {
@@ -593,51 +1451,258 @@ void pagePump5(void *pvParameters) {
 	}
 }
 void pageGraph(void *pvParameters) {
+	char bufferSend[] = "";
+	uint8_t prevID = 10;
+	uint16_t preNumGraph = 0;
+	uint16_t NumGraph = 0;
 	vTaskSuspend(NULL);
 	while (1) {
-		vTaskDelete(NULL);
+		prevpage = GRAPH;
+		if (reloadPage == true) {
+			reloadPage = false;
+			prevID = 10;
+			preNumGraph = 0;
+
+		}
+		if (IDHMI == 0x00 && DataHMI[0] == 0) {
+			if (prevID != IDHMI ) {
+				USART3_puts("b1.bco=1024");
+				EndData();
+				USART3_puts("cle 3,0");
+				EndData();
+				NumGraph = mystrlength(&GraphPH[0]);
+				if (NumGraph > 0 ) {
+					sprintf(bufferSend,"addt 19,0,%d",NumGraph);
+					USART3_puts(&bufferSend[0]);
+					EndData();
+					for (int j = 0; j<NumGraph+1;j++) {
+						USART3_puts(&GraphPPM[j]);
+					}
+				}
+				prevID = IDHMI;
+			}
+		}
+		else if (IDHMI == 0x01 && DataHMI[0] == 1) {
+			if (prevID != IDHMI ) {
+				USART3_puts("b2.bco=1024");
+				EndData();
+				USART3_puts("cle 3,0");
+				EndData();
+				NumGraph = mystrlength(&GraphTemp[0]);
+				if (NumGraph > 0 ) {
+					sprintf(bufferSend,"addt 19,0,%d",NumGraph);
+					USART3_puts(&bufferSend[0]);
+					EndData();
+					for (int j = 0; j<NumGraph+1;j++) {
+						USART3_puts(&GraphTemp[j]);
+					}
+				}
+				prevID = IDHMI;
+			}
+		}	
+		else if (IDHMI == 0x03 && DataHMI[0] == 3) {
+			if (prevID != IDHMI ) {
+				USART3_puts("b4.bco=1024");
+				EndData();
+				USART3_puts("cle 3,0");
+				EndData();
+				NumGraph = mystrlength(&GraphTank[0]);
+				if (NumGraph > 0 ) {
+					sprintf(bufferSend,"addt 19,0,%d",NumGraph);
+					USART3_puts(&bufferSend[0]);
+					EndData();
+					for (int j = 0; j<NumGraph+1;j++) {
+						USART3_puts(&GraphTank[j]);
+					}
+				}
+				prevID = IDHMI;
+			}
+		}	
+		else if (IDHMI == 0x04 && DataHMI[0] == 4) {
+			if (prevID != IDHMI ) {
+				USART3_puts("b3.bco=1024");
+				EndData();
+				USART3_puts("cle 3,0");
+				EndData();
+				NumGraph = mystrlength(&GraphPH[0]);
+				if (NumGraph > 0 ) {
+					sprintf(bufferSend,"addt 19,0,%d",NumGraph);
+					USART3_puts(&bufferSend[0]);
+					EndData();
+					for (int j = 0; j<NumGraph+1;j++) {
+						USART3_puts(&GraphPH[j]);
+					}
+				}
+				prevID = IDHMI;
+			}
+		}	
+		else
+			xSemaphoreGive(xSemaphoreHandleData);
 	}
 }
 void pageSetting(void *pvParameters) {
+	char bufferSend[] = "";
 	vTaskSuspend(NULL);
 	while (1) {
-		vTaskDelete(NULL);
+		prevpage = SETTING;
+		if (reloadPage == true) {
+			reloadPage = false;
+			if (RefillWhenLow == false) {
+				USART3_puts("b1.bco=50712");
+				EndData();
+			}
+			else {
+				USART3_puts("b1.bco=1024");
+				EndData();
+			}
+			sprintf(bufferSend,"va0.val=%d",DisplayTimeOut[0]);
+			USART3_puts(&bufferSend[0]);
+			EndData();
+			sprintf(bufferSend,"n1.val=%d",DisplayTimeOut[1]);
+			USART3_puts(&bufferSend[0]);
+			EndData();
+			sprintf(bufferSend,"n2.val=%d",DisplayTimeOut[2]);
+			USART3_puts(&bufferSend[0]);
+			EndData();
+		}
+		
+		if (xSemaphoreTake( xSemaphoreHadData,1000) == pdTRUE) {
+			if (IDHMI == 0 && DataHMI[0] == 0x01) {
+				RefillWhenLow = !RefillWhenLow;
+			}
+			if (IDHMI == 4) {
+				DisplayTimeOut[0] = (uint16_t) (uint16_t)((DataHMI[1]<<8) | DataHMI[0]);
+				DisplayTimeOut[1] = (uint16_t) DataHMI[2];
+				DisplayTimeOut[2] = (uint16_t) DataHMI[3];
+			}
+			if (IDHMI == 3 && DataHMI[0] == 0x01) {
+				ResetALL = true;
+			}
+			xSemaphoreGive(xSemaphoreHandleData);
+		}
 	}
 }
 void pageSettingDate(void *pvParameters) {
 	vTaskSuspend(NULL);
 	while (1) {
-		vTaskDelete(NULL);
+		prevpage = SETTING_DATE;
+		if (xSemaphoreTake( xSemaphoreHadData,1000) == pdTRUE) {
+			if (IDHMI == 4) {
+				rtc_setdatetime.day = DataHMI[0];
+				rtc_setdatetime.date = DataHMI[1];
+				rtc_setdatetime.month = DataHMI[2];
+				rtc_setdatetime.year = DataHMI[3];
+				rtc_setdatetime.hour = DataHMI[4];
+				rtc_setdatetime.minutes = DataHMI[5];
+				rtc_setdatetime.seconds = DataHMI[6];
+				ds1307_set_rtc_datetime(&rtc_setdatetime);
+			}
+			xSemaphoreGive(xSemaphoreHandleData);
+		}
 	}
 }
 void pageRefilldate(void *pvParameters) {
 	vTaskSuspend(NULL);
 	while (1) {
-		vTaskDelete(NULL);
+		prevpage = REFILL_DATE;
+		if (xSemaphoreTake( xSemaphoreHadData,1000) == pdTRUE) {
+			if (IDHMI == 2) {
+				memcpy(RefillDates,DataHMI,31);
+			}
+			xSemaphoreGive(xSemaphoreHandleData);
+		}
 	}
 }
 void pageCalpH(void *pvParameters) {
+	char bufferSend[] = "";
 	vTaskSuspend(NULL);
 	while (1) {
-		vTaskDelete(NULL);
+		prevpage = CAL_PH;
+		if (reloadPage == true) {
+			sprintf(bufferSend,"x0.val=%d",(uint16_t)(sensorPHCalibration));
+			USART3_puts(&bufferSend[0]);
+			EndData();
+			reloadPage = false;
+		}
+		sprintf(bufferSend,"t3.txt=\"%0.1f\"",data_sensor[1]);
+		USART3_puts(&bufferSend[0]);
+		EndData(); 	
+		if (xSemaphoreTake( xSemaphoreHadData,400) == pdTRUE) {
+			if (IDHMI == 0) {
+				sensorPHCalibration = (float)(((DataHMI[1]<<8) | DataHMI[0])/10);
+			}
+			xSemaphoreGive(xSemaphoreHandleData);
+		}
+		
 	}
 }
 void pageCalPPM(void *pvParameters) {
+	char bufferSend[] = "";
 	vTaskSuspend(NULL);
 	while (1) {
-		vTaskDelete(NULL);
+		prevpage = CAL_PPM;
+		if (reloadPage == true) {
+			sprintf(bufferSend,"n0.val=%d",(uint16_t)(sensorPPMCalibration));
+			USART3_puts(&bufferSend[0]);
+			EndData();
+			reloadPage = false;
+		}
+		sprintf(bufferSend,"t3.txt=\"%0.1f\"",data_sensor[0]);
+		USART3_puts(&bufferSend[0]);
+		EndData(); 	
+		if (xSemaphoreTake( xSemaphoreHadData,400) == pdTRUE) {
+			if (IDHMI == 0) {
+				sensorPPMCalibration = (uint16_t)(((DataHMI[1]<<8) | DataHMI[0])/10);
+			}
+			xSemaphoreGive(xSemaphoreHandleData);
+		}
+		
 	}
 }
 void pageCalTemp(void *pvParameters) {
+	char bufferSend[] = "";
 	vTaskSuspend(NULL);
 	while (1) {
-		vTaskDelete(NULL);
+		prevpage = CAL_TEMP;
+		if (reloadPage == true) {
+			sprintf(bufferSend,"n0.val=%d",(uint16_t)(sensorTempCalibration));
+			USART3_puts(&bufferSend[0]);
+			EndData();
+			reloadPage = false;
+		}
+		sprintf(bufferSend,"t3.txt=\"%0.1f\"",data_sensor[3]);
+		USART3_puts(&bufferSend[0]);
+		EndData(); 	
+		if (xSemaphoreTake( xSemaphoreHadData,400) == pdTRUE) {
+			if (IDHMI == 0) {
+				sensorTempCalibration = (float)(((DataHMI[1]<<8) | DataHMI[0])/10);
+			}
+			xSemaphoreGive(xSemaphoreHandleData);
+		}
+		
 	}
 }
 void pageCalSonic(void *pvParameters) {
+	char bufferSend[] = "";
 	vTaskSuspend(NULL);
 	while (1) {
-		vTaskDelete(NULL);
+		prevpage = CAL_SONIC;
+		if (reloadPage == true) {
+			sprintf(bufferSend,"n0.val=%d",(uint16_t)(sensorSonicCalibration));
+			USART3_puts(&bufferSend[0]);
+			EndData();
+			reloadPage = false;
+		}
+		sprintf(bufferSend,"t3.txt=\"%0.1f\"",data_sensor[3]);
+		USART3_puts(&bufferSend[0]);
+		EndData(); 	
+		if (xSemaphoreTake( xSemaphoreHadData,400) == pdTRUE) {
+			if (IDHMI == 0) {
+				sensorSonicCalibration = (uint16_t)(((DataHMI[1]<<8) | DataHMI[0])/10);
+			}
+			xSemaphoreGive(xSemaphoreHandleData);
+		}
+		
 	}
 }
 void pageFlow(void *pvParameters) {
@@ -647,14 +1712,33 @@ void pageFlow(void *pvParameters) {
 	}
 }
 void pageProfile(void *pvParameters) {
+	
 	vTaskSuspend(NULL);
 	while (1) {
 		vTaskDelete(NULL);
 	}
 }
 void pageFeritilizer(void *pvParameters) {
+	char bufferSend[] = "";
 	vTaskSuspend(NULL);
 	while (1) {
+		prevpage = FERITILIZER;
+		if (reloadPage == true) {
+			sprintf(bufferSend,"n0.val=%d",Ratio[0]);
+			USART3_puts(&bufferSend[0]);
+			EndData();
+			sprintf(bufferSend,"n1.val=%d",Ratio[1]);
+			USART3_puts(&bufferSend[0]);
+			EndData();
+			reloadPage = false;
+		}
+		if (xSemaphoreTake( xSemaphoreHadData,1000) == pdTRUE) {
+			if (IDHMI == 1) {
+				Ratio[0] = DataHMI[0];
+				Ratio[1] = DataHMI[1];
+			}
+			xSemaphoreGive(xSemaphoreHandleData);
+		}
 	}
 }
 void handleHMI(void *pvParameters) {
@@ -978,8 +2062,7 @@ void handleUARTRX(void *pvParameters) {
 				if (FlagTC == TRUE){
 					// Xu ly nhan byte dau tien
 						switch (DataHMIREV[0]) {
-							case BYTE_FIRST_START_PAGE:
-							{
+							case BYTE_FIRST_START_PAGE: {
 								if (mystrlength(DataHMIREV) == 5) {
 									typedata = START_PAGE;
 								}
@@ -991,8 +2074,7 @@ void handleUARTRX(void *pvParameters) {
 								}
 								break;
 							}
-							case BYTE_FIRST_SEND_DATA:
-							{
+							case BYTE_FIRST_SEND_DATA: {
 								if (mystrlength(DataHMIREV) >= 5) {
 									typedata = SEND_DATA;
 								}
@@ -1004,9 +2086,8 @@ void handleUARTRX(void *pvParameters) {
 								}
 								break;
 							}
-							default:
-							{
-									typedata = UNKNOWN;
+							default: {
+									//typedata = UNKNOWN;
 									memset(DataHMIREV,'\0',LENGTH_DATA_HMI);
 									FlagTC = FALSE;
 									break;
@@ -1173,7 +2254,10 @@ void handleUARTRX(void *pvParameters) {
 										else 
 											DataHMI[i] = DataHMIREV[i+3];
 									}
-									xSemaphoreGive(xSemaphoreHadData);
+									if (page == PPM || page == PPM2 || page == PH || page == TANK || page == VALVE || page == VALVE2 || page == PERISTALTIC_PUMP ||
+											page == PUMP || page == PUMP2 || page == PUMP3 || page == PUMP4 || page == SETTING || page == SETTING_DATE || 
+											page == REFILL_DATE || page == CAL_PH || page == CAL_PPM || page == CAL_TEMP || page == CAL_SONIC || page == FERITILIZER)
+										xSemaphoreGive(xSemaphoreHadData);
 									FlagTC = FALSE;
 									memset(DataHMIREV,'\0',LENGTH_DATA_HMI);
 								}
@@ -1206,7 +2290,7 @@ void display_rtc(rtc_ds1307_datetime_t *rtc_datetime) {
 void handleRTC(void *pvParameters) {
 	rtc_ds1307_datetime_t rtc_datetime;
 	while (1) {
-		ds1307_get_rtc_datetime(&rtc_datetime);
+		ds1307_get_rtc_datetime(&rtc_getdatetime);
 		display_rtc(&rtc_datetime);
 		vTaskDelay(1000);
 	}
@@ -1222,12 +2306,13 @@ void readSensor(void *pvParameters) {
 	float val_con = 0.0; 
 	float volt_cur_ph =0.0;
 	
-	uint16_t countSaveinDay = 0;
+	uint16_t countSavedinDay = 0;
 	
 	unsigned long int sumSensorPHinDay = 0;
 	unsigned long int sumSensorPPMinDay = 0;
 	unsigned long int sumSensorTANKinDay = 0;
 	unsigned long int sumSensorTEMPinDay = 0;
+	
 	GPIO_WriteBit(GPIOD,GPIO_Pin_2,Bit_SET);
 	GPIO_WriteBit(GPIOD,GPIO_Pin_3,Bit_SET);
 	while (1){
@@ -1242,7 +2327,6 @@ void readSensor(void *pvParameters) {
 		ds18b20_send_function_cmd(READ_SCRATCHPAD_CMD);
 		data_sensor[3] = ds18b20_read_temp();
 		
-		//vTaskDelay(100/portTICK_PERIOD_MS);
 		USART_SendData(USART2,(uint16_t )data_sonic_trigger);
 		for (int i = 0;i<4;i++) {
 			if (xSemaphoreTake( xSemaphoreSonicSensor,portMAX_DELAY) == pdTRUE )
@@ -1252,7 +2336,6 @@ void readSensor(void *pvParameters) {
 		distance = (distance <<8)| data_sonic[2];
 		data_sensor[2]=distance;
 		
-		//vTaskDelay(100/portTICK_PERIOD_MS);
 		volt_cur = ((float)uhADCxConvertedValue[1]*3)/4095;
 		val_con = volt_cur/(1+(0.02*(data_sensor[3]-25)));
 		data_sensor[0] = ((133.42*val_con*val_con*val_con)-(255.86*val_con*val_con)+(857.39*val_con))*0.5;
@@ -1264,21 +2347,19 @@ void readSensor(void *pvParameters) {
 		sumSensorTANKinDay += (unsigned long int)(data_sensor[2]*255/tankDepth);
 		sumSensorPPMinDay	+= (unsigned long int)(data_sensor[0]*255/10000);
 		sumSensorPHinDay += (unsigned long int)(data_sensor[1]*255/14);
-		countSaveinDay++;
+		countSavedinDay++;
 		
-		if (countSaveinDay >= 288) {
-			sensorPHinDay[NumValSaved] = (uint8_t)(sumSensorPHinDay/countSaveinDay);
-			sensorPPMinDay[NumValSaved] = (uint8_t)(sumSensorPPMinDay/countSaveinDay);
-			sensorTANKinDay[NumValSaved] = (uint8_t)(sumSensorTANKinDay/countSaveinDay);
-			sensorTEMPinDay[NumValSaved] = (uint8_t)(sumSensorTEMPinDay/countSaveinDay);
+		if (xSemaphoreTake( SaveDataEvery3Minute,0) == pdTRUE) {
+			sensorPHinDay[NumValSaved] = (uint8_t)(sumSensorPHinDay/countSavedinDay);
+			sensorPPMinDay[NumValSaved] = (uint8_t)(sumSensorPPMinDay/countSavedinDay);
+			sensorTANKinDay[NumValSaved] = (uint8_t)(sumSensorTANKinDay/countSavedinDay);
+			sensorTEMPinDay[NumValSaved] = (uint8_t)(sumSensorTEMPinDay/countSavedinDay);
 			NumValSaved++;
-			for (int j = 0;j<1000;j++) {
-				sensorPHinDay[j] = 0;
-				sensorPPMinDay[j] = 0;
-				sensorTANKinDay[j] = 0;
-				sensorTEMPinDay[j] = 0;
-			}
-			countSaveinDay = 0;
+//			memset(sensorPHinDay,'\0',sizeof(sensorPHinDay));
+//			memset(sensorPPMinDay,'\0',sizeof(sensorPHinDay));
+//			memset(sensorTANKinDay,'\0',sizeof(sensorPHinDay));
+//			memset(sensorTEMPinDay,'\0',sizeof(sensorPHinDay));
+			countSavedinDay = 0;
 		}
 		xSemaphoreGive(xSemaphoresensorsReady);
 		vTaskDelay(500/portTICK_PERIOD_MS);

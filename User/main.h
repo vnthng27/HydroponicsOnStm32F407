@@ -117,22 +117,11 @@ float tdsBMultipler = 1;
 
 float dosingAmount = 1;
 
-float targetMinPh = 6.0;
-float targetMaxPh = 6.5;
-float phOffset = 0.5;
+
 
 unsigned int targetMinTds = 400;
 unsigned int targetMaxTds = 600;
 unsigned int tdsOffset = 20;
-
-unsigned int targetMinTdsALL = 0;
-unsigned int targetMaxTdsALL = 0;
-unsigned int tdsOffsetALL = 0;
-
-int targetMinTankLv = 0;
-int targetMaxTankLv = 100;
-int TankLvOffset = 2;
-
 
 bool adjustPhDown = false;
 uint8_t swapInterval = 2;
@@ -149,13 +138,78 @@ uint8_t sensorTANKinDay[1000];
 uint8_t sensorTEMPinDay[1000];
 
 uint16_t NumValSaved = 0;
-
+//Page Warning
 float errorMarginPH = 0.0;
 float errorMarginPPM = 0.0;
 float errorMarginTANK = 0.0;
 float errorMarginTEMP = 0.0;
-
+//Page Wifi
 uint16_t WifiInterval = 0;
+//Page PPM
+unsigned int targetMinTdsALL = 0;
+unsigned int targetMaxTdsALL = 0;
+unsigned int tdsOffsetALL = 0;
+//Page PPM2
+uint16_t PPMStage[5] = {0};
+uint8_t DayPPMStageOne[31] = {0};
+uint8_t DayPPMStageTwo[31] = {0};
+uint8_t DayPPMStageThree[31] = {0};
+uint8_t DayPPMStageFour[31] = {0};
+uint8_t DayPPMStageFive[31] = {0};
+//page PH
+float targetMinPh = 6.0;
+float targetMaxPh = 6.5;
+float phOffset = 0.5;
+//page Tank
+uint16_t targetMinTankLv = 0;
+uint16_t targetMaxTankLv = 100;
+uint16_t TankLvOffset = 20;
+//Page Valve
+uint8_t ValveOneInfo[3] = {0};
+uint8_t ValveTwoInfo[3] = {0};
+uint8_t ValveThreeInfo[3] = {0};
+//Page Valve 2
+uint8_t ValveFourInfo[3] = {0};
+uint8_t ValveFiveInfo[3] = {0};
+uint8_t ValveSixInfo[3] = {0};
+//Page Peristaltic
+uint8_t PerPumpOneInfo[2] = {0};
+uint8_t PerPumpTwoInfo[2] = {0};
+uint8_t PerPumpThreeInfo[2] = {0};
+uint8_t PerPumpFourInfo[2] = {0};
+//Page Pump
+uint8_t PumpAcOneInfo[2] = {0};
+uint8_t PumpAcTwoInfo[2] = {0}; 
+//Page Pump2 && Pump3
+uint8_t TimeWaterthePlants[112] = {0};
+//Page Pump4
+uint8_t DayWaterthePlants[7] = {0};
+//Page Pump5
+
+
+//Page Graph
+uint8_t GraphPH[1000] = {0};
+uint8_t GraphPPM[1000] = {0};
+uint8_t GraphTank[1000] = {0};
+uint8_t GraphTemp[1000] = {0};
+//Page Setting
+bool RefillWhenLow = false;
+uint16_t DisplayTimeOut[3] = {0};
+bool ResetALL = false;
+//Page Setting Date
+rtc_ds1307_datetime_t rtc_setdatetime;
+//Page Refill Dates
+uint8_t RefillDates[31] = {0};
+//Page Cal PH
+float sensorPHCalibration = 0;
+//Page Cal PPM
+uint16_t sensorPPMCalibration = 0;
+//Page Cal PPM
+float sensorTempCalibration = 0;
+//Page Sonic
+uint16_t sensorSonicCalibration = 0;
+//Page Feritilizer
+uint16_t Ratio[2] = {0};
 /*
 **	BIEN PHUC VU CHO NGUOI DUNG
 */
@@ -166,7 +220,8 @@ bool reloadPage = false;
 **	BIEN PHUC VU CHO HE THONG
 */
 uint8_t currentlyDosing = FALSE;
-rtc_ds1307_datetime_t rtc_datetime;
+rtc_ds1307_datetime_t rtc_getdatetime;
+
 /*
 *	KHAI BAO BIEN VA DINH NGHIA PHUC VU XU LY GIAO TIEP HMI
 */
@@ -176,8 +231,7 @@ typedef enum {FAILED = 0, PASSED = !FAILED} Status;
 #define BYTE_FIRST_SEND_DATA 0xF5 //byte start send data of page
 #define END_DATA 0xFF // byte ket thuc chuoi du lieu tu HMI
 #define LENGTH_DATA_HMI 100 // Do dai chuoi du lieu toi da tu HMI
-char threeByteEnd[3] = {0xFF,0xFF,0xFF};
-#define endData USART3_puts(&threeByteEnd[0]);
+
 //	Xac dinh page hien tai cua HMI
 typedef enum {
 	HOME 								= 0U,
@@ -743,9 +797,9 @@ void delayus(unsigned int time) {
 	  TIM_SetCounter(TIM3,0);  //Load timer CNT = 0  
     while (TIM_GetCounter(TIM3) <= time);
 }
-uint8_t mystrlength(volatile uint8_t *buffer) {
+uint16_t mystrlength(volatile uint8_t *buffer) {
 	uint8_t countFF = 0;
-	for (uint8_t i = 0;;i++)
+	for (uint16_t i = 0;;i++)
 	{
 		if (*buffer == 0)
 			countFF ++;
@@ -883,6 +937,7 @@ SemaphoreHandle_t xSemaphoresensorsReady = NULL;
 SemaphoreHandle_t xSemaphoreHandleData = NULL;
 SemaphoreHandle_t xSemaphoreHadData = NULL;
 SemaphoreHandle_t xSemaphoreEXTIZCD = NULL;
+SemaphoreHandle_t SaveDataEvery3Minute = NULL;
 //Semaphore for handle page's HMI
 
 xTaskHandle TaskpageHome;
@@ -947,7 +1002,7 @@ void pageFeritilizer(void *pvParameters);
 
 // Function handle page for HMI
 void USART3_puts(volatile char *s); 
-
+void EndData (void);
 //*********************************SENSOR********************//
 void readSensor(void *pvParameters);
 void temperature_task(void *pvParameters);

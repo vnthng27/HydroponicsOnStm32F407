@@ -153,53 +153,61 @@
         <Ww>
           <count>0</count>
           <WinNumber>1</WinNumber>
-          <ItemText>typedata</ItemText>
+          <ItemText>PerPumpOneInfo</ItemText>
         </Ww>
         <Ww>
           <count>1</count>
           <WinNumber>1</WinNumber>
-          <ItemText>page</ItemText>
+          <ItemText>PerPumpTwoInfo</ItemText>
         </Ww>
         <Ww>
           <count>2</count>
           <WinNumber>1</WinNumber>
-          <ItemText>\\FreeRTOS\User/main.c\DataHMIREV</ItemText>
+          <ItemText>PerPumpThreeInfo</ItemText>
         </Ww>
       </WatchWindow1>
       <WatchWindow2>
         <Ww>
           <count>0</count>
           <WinNumber>2</WinNumber>
-          <ItemText>IDHMI</ItemText>
+          <ItemText>DataHMIREV</ItemText>
         </Ww>
         <Ww>
           <count>1</count>
           <WinNumber>2</WinNumber>
-          <ItemText>\\FreeRTOS\User/main.c\DataHMI</ItemText>
+          <ItemText>page</ItemText>
         </Ww>
         <Ww>
           <count>2</count>
           <WinNumber>2</WinNumber>
-          <ItemText>targetMinTdsALL</ItemText>
+          <ItemText>prevpage</ItemText>
         </Ww>
         <Ww>
           <count>3</count>
           <WinNumber>2</WinNumber>
-          <ItemText>targetMaxTdsALL</ItemText>
+          <ItemText>typedata</ItemText>
         </Ww>
         <Ww>
           <count>4</count>
           <WinNumber>2</WinNumber>
-          <ItemText>tdsOffsetALL</ItemText>
+          <ItemText>IDHMI</ItemText>
         </Ww>
       </WatchWindow2>
+      <MemoryWindow1>
+        <Mm>
+          <WinNumber>1</WinNumber>
+          <SubType>0</SubType>
+          <ItemText>0x08020000</ItemText>
+          <AccSizeX>0</AccSizeX>
+        </Mm>
+      </MemoryWindow1>
       <Tracepoint>
         <THDelay>0</THDelay>
       </Tracepoint>
       <DebugFlag>
         <trace>0</trace>
         <periodic>1</periodic>
-        <aLwin>0</aLwin>
+        <aLwin>1</aLwin>
         <aCover>0</aCover>
         <aSer1>0</aSer1>
         <aSer2>0</aSer2>
@@ -643,7 +651,7 @@
       <GroupNumber>6</GroupNumber>
       <FileNumber>30</FileNumber>
       <FileType>1</FileType>
-      <tvExp>0</tvExp>
+      <tvExp>1</tvExp>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>.\RTC_I2C\Src\rtc_ds1307.c</PathWithFileName>

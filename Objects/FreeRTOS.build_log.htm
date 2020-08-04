@@ -36,68 +36,88 @@ compiling stm32f4xx_rcc.c...
 compiling stm32f4xx_usart.c...
 compiling misc.c...
 compiling stm32f4xx_spi.c...
-compiling stm32f4xx_i2c.c...
-compiling croutine.c...
 compiling stm32f4xx_exti.c...
-compiling stm32f4xx_dma.c...
+compiling croutine.c...
 compiling list.c...
+compiling stm32f4xx_i2c.c...
+compiling stm32f4xx_dma.c...
 compiling queue.c...
 compiling timers.c...
-compiling stm32f4xx_syscfg.c...
 compiling tasks.c...
-compiling main.c...
-User\main.c(147): warning:  #167-D: argument of type "uint8_t *" is incompatible with parameter of type "volatile char *"
-  						USART3_puts(&sensorPHinDay[j]);
-User\main.c(182): warning:  #167-D: argument of type "uint8_t *" is incompatible with parameter of type "volatile char *"
-  					USART3_puts(&sensorPHinDay[j]);
-User\main.c(200): warning:  #167-D: argument of type "uint8_t *" is incompatible with parameter of type "volatile char *"
-  						USART3_puts(&sensorTEMPinDay[j]);
-User\main.c(228): warning:  #167-D: argument of type "uint8_t *" is incompatible with parameter of type "volatile char *"
-  					USART3_puts(&sensorTEMPinDay[j]);
-User\main.c(246): warning:  #167-D: argument of type "uint8_t *" is incompatible with parameter of type "volatile char *"
-  						USART3_puts(&sensorTANKinDay[j]);
-User\main.c(276): warning:  #167-D: argument of type "uint8_t *" is incompatible with parameter of type "volatile char *"
-  					USART3_puts(&sensorTANKinDay[j]);
-User\main.c(294): warning:  #167-D: argument of type "uint8_t *" is incompatible with parameter of type "volatile char *"
-  						USART3_puts(&sensorPHinDay[j]);
-User\main.c(323): warning:  #167-D: argument of type "uint8_t *" is incompatible with parameter of type "volatile char *"
-  					USART3_puts(&sensorPHinDay[j]);
-User\main.c(487): warning:  #177-D: variable "bufferSend"  was declared but never referenced
-  	char bufferSend[] = "";
-User\main.c(1257): warning:  #1035-D: single-precision operand implicitly converted to double-precision
-  		val_con = volt_cur/(1+(0.02*(data_sensor[3]-25)));
-User\main.c(1258): warning:  #1035-D: single-precision operand implicitly converted to double-precision
-  		data_sensor[0] = ((133.42*val_con*val_con*val_con)-(255.86*val_con*val_con)+(857.39*val_con))*0.5;
-User\main.c(1258): warning:  #1035-D: single-precision operand implicitly converted to double-precision
-  		data_sensor[0] = ((133.42*val_con*val_con*val_con)-(255.86*val_con*val_con)+(857.39*val_con))*0.5;
-User\main.c(1258): warning:  #1035-D: single-precision operand implicitly converted to double-precision
-  		data_sensor[0] = ((133.42*val_con*val_con*val_con)-(255.86*val_con*val_con)+(857.39*val_con))*0.5;
-User\main.c(1261): warning:  #1035-D: single-precision operand implicitly converted to double-precision
-  		data_sensor[1]=volt_cur_ph*3.5 + 1.2;
-User\main.c(1327): warning:  #1035-D: single-precision operand implicitly converted to double-precision
-  		val_con = volt_cur/(1+(0.02*(data_sensor[3]-25)));
-User\main.c(1328): warning:  #1035-D: single-precision operand implicitly converted to double-precision
-  		data_sensor[0] = ((133.42*val_con*val_con*val_con)-(255.86*val_con*val_con)+(857.39*val_con))*0.5;
-User\main.c(1328): warning:  #1035-D: single-precision operand implicitly converted to double-precision
-  		data_sensor[0] = ((133.42*val_con*val_con*val_con)-(255.86*val_con*val_con)+(857.39*val_con))*0.5;
-User\main.c(1328): warning:  #1035-D: single-precision operand implicitly converted to double-precision
-  		data_sensor[0] = ((133.42*val_con*val_con*val_con)-(255.86*val_con*val_con)+(857.39*val_con))*0.5;
-User\main.c(1331): warning:  #1035-D: single-precision operand implicitly converted to double-precision
-  		data_sensor[1]=volt_cur_ph*3.5 + 1.2;
-User\main.c(1358): warning:  #1035-D: single-precision operand implicitly converted to double-precision
-    float percent = a_setPoint / 100.0;
-User\main.c: 20 warnings, 0 errors
 compiling port.c...
 compiling heap_4.c...
+compiling stm32f4xx_syscfg.c...
+compiling main.c...
+User\main.c(152): warning:  #167-D: argument of type "uint8_t *" is incompatible with parameter of type "volatile char *"
+  						USART3_puts(&sensorPHinDay[j]);
+User\main.c(188): warning:  #167-D: argument of type "uint8_t *" is incompatible with parameter of type "volatile char *"
+  					USART3_puts(&sensorPHinDay[j]);
+User\main.c(208): warning:  #167-D: argument of type "uint8_t *" is incompatible with parameter of type "volatile char *"
+  						USART3_puts(&sensorTEMPinDay[j]);
+User\main.c(238): warning:  #167-D: argument of type "uint8_t *" is incompatible with parameter of type "volatile char *"
+  					USART3_puts(&sensorTEMPinDay[j]);
+User\main.c(258): warning:  #167-D: argument of type "uint8_t *" is incompatible with parameter of type "volatile char *"
+  						USART3_puts(&sensorTANKinDay[j]);
+User\main.c(290): warning:  #167-D: argument of type "uint8_t *" is incompatible with parameter of type "volatile char *"
+  					USART3_puts(&sensorTANKinDay[j]);
+User\main.c(310): warning:  #167-D: argument of type "uint8_t *" is incompatible with parameter of type "volatile char *"
+  						USART3_puts(&sensorPHinDay[j]);
+User\main.c(341): warning:  #167-D: argument of type "uint8_t *" is incompatible with parameter of type "volatile char *"
+  					USART3_puts(&sensorPHinDay[j]);
+User\main.c(127): warning:  #550-D: variable "prevHour"  was set but never used
+  	uint8_t prevHour = 0;
+User\main.c(128): warning:  #550-D: variable "prevMinute"  was set but never used
+  	uint8_t prevMinute = 0;
+User\main.c(529): warning:  #177-D: variable "NumDay"  was declared but never referenced
+  	uint8_t NumDay = 0;
+User\main.c(719): warning:  #177-D: variable "bufferSend"  was declared but never referenced
+  	char bufferSend[] = "";
+User\main.c(945): warning:  #177-D: variable "bufferSend"  was declared but never referenced
+  	char bufferSend[] = "";
+User\main.c(1404): warning:  #177-D: variable "bufferSend"  was declared but never referenced
+  	char bufferSend[] = "";
+User\main.c(1479): warning:  #167-D: argument of type "uint8_t *" is incompatible with parameter of type "volatile char *"
+  						USART3_puts(&GraphPPM[j]);
+User\main.c(1497): warning:  #167-D: argument of type "uint8_t *" is incompatible with parameter of type "volatile char *"
+  						USART3_puts(&GraphTemp[j]);
+User\main.c(1515): warning:  #167-D: argument of type "uint8_t *" is incompatible with parameter of type "volatile char *"
+  						USART3_puts(&GraphTank[j]);
+User\main.c(1533): warning:  #167-D: argument of type "uint8_t *" is incompatible with parameter of type "volatile char *"
+  						USART3_puts(&GraphPH[j]);
+User\main.c(1456): warning:  #550-D: variable "preNumGraph"  was set but never used
+  	uint16_t preNumGraph = 0;
+User\main.c(2340): warning:  #1035-D: single-precision operand implicitly converted to double-precision
+  		val_con = volt_cur/(1+(0.02*(data_sensor[3]-25)));
+User\main.c(2341): warning:  #1035-D: single-precision operand implicitly converted to double-precision
+  		data_sensor[0] = ((133.42*val_con*val_con*val_con)-(255.86*val_con*val_con)+(857.39*val_con))*0.5;
+User\main.c(2341): warning:  #1035-D: single-precision operand implicitly converted to double-precision
+  		data_sensor[0] = ((133.42*val_con*val_con*val_con)-(255.86*val_con*val_con)+(857.39*val_con))*0.5;
+User\main.c(2341): warning:  #1035-D: single-precision operand implicitly converted to double-precision
+  		data_sensor[0] = ((133.42*val_con*val_con*val_con)-(255.86*val_con*val_con)+(857.39*val_con))*0.5;
+User\main.c(2344): warning:  #1035-D: single-precision operand implicitly converted to double-precision
+  		data_sensor[1]=volt_cur_ph*3.5 + 1.2;
+User\main.c(2408): warning:  #1035-D: single-precision operand implicitly converted to double-precision
+  		val_con = volt_cur/(1+(0.02*(data_sensor[3]-25)));
+User\main.c(2409): warning:  #1035-D: single-precision operand implicitly converted to double-precision
+  		data_sensor[0] = ((133.42*val_con*val_con*val_con)-(255.86*val_con*val_con)+(857.39*val_con))*0.5;
+User\main.c(2409): warning:  #1035-D: single-precision operand implicitly converted to double-precision
+  		data_sensor[0] = ((133.42*val_con*val_con*val_con)-(255.86*val_con*val_con)+(857.39*val_con))*0.5;
+User\main.c(2409): warning:  #1035-D: single-precision operand implicitly converted to double-precision
+  		data_sensor[0] = ((133.42*val_con*val_con*val_con)-(255.86*val_con*val_con)+(857.39*val_con))*0.5;
+User\main.c(2412): warning:  #1035-D: single-precision operand implicitly converted to double-precision
+  		data_sensor[1]=volt_cur_ph*3.5 + 1.2;
+User\main.c(2439): warning:  #1035-D: single-precision operand implicitly converted to double-precision
+    float percent = a_setPoint / 100.0;
+User\main.c: 30 warnings, 0 errors
 compiling stm32f4xx_tim.c...
 compiling rtc_usart.c...
 compiling rtc_i2c.c...
 compiling rtc_ds1307.c...
 compiling ds18b20_mflib.c...
 linking...
-Program Size: Code=39430 RO-data=938 RW-data=512 ZI-data=78072  
+Program Size: Code=49390 RO-data=938 RW-data=580 ZI-data=82380  
 FromELF: creating hex file...
-".\Objects\FreeRTOS.axf" - 0 Error(s), 20 Warning(s).
+".\Objects\FreeRTOS.axf" - 0 Error(s), 30 Warning(s).
 
 <h2>Software Packages used:</h2>
 
@@ -111,7 +131,7 @@ Package Vendor: Keil
   C:\Users\Admin\AppData\Local\Arm\Packs\Keil\STM32F4xx_DFP\2.14.0\Drivers\CMSIS\Device\ST\STM32F4xx\Include
 
 <h2>Collection of Component Files used:</h2>
-Build Time Elapsed:  00:00:03
+Build Time Elapsed:  00:00:09
 </pre>
 </body>
 </html>
