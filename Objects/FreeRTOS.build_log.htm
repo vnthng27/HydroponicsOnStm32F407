@@ -28,96 +28,98 @@ Project File Date:  07/23/2020
 *** Using Compiler 'V5.06 update 6 (build 750)', folder: 'C:\Keil_v5\ARM\ARMCC\Bin'
 Rebuild target 'Freertos'
 assembling startup_stm32f40_41xxx.s...
-compiling system_stm32f4xx.c...
 compiling stm32f4xx_it.c...
+compiling system_stm32f4xx.c...
+compiling stm32f4xx_rcc.c...
 compiling stm32f4xx_gpio.c...
 compiling stm32f4xx_adc.c...
-compiling stm32f4xx_rcc.c...
 compiling stm32f4xx_usart.c...
-compiling misc.c...
 compiling stm32f4xx_spi.c...
+compiling misc.c...
 compiling stm32f4xx_exti.c...
 compiling croutine.c...
-compiling list.c...
-compiling stm32f4xx_i2c.c...
 compiling stm32f4xx_dma.c...
-compiling queue.c...
-compiling timers.c...
-compiling tasks.c...
-compiling port.c...
-compiling heap_4.c...
-compiling stm32f4xx_syscfg.c...
+compiling stm32f4xx_i2c.c...
 compiling main.c...
-User\main.c(152): warning:  #167-D: argument of type "uint8_t *" is incompatible with parameter of type "volatile char *"
+User\main.h(392): warning:  #177-D: variable "NVIC_InitStructure"  was declared but never referenced
+  	NVIC_InitTypeDef NVIC_InitStructure;
+User\main.c(71): warning:  #550-D: variable "capture"  was set but never used
+  	uint16_t capture = 0;
+User\main.c(175): warning:  #167-D: argument of type "uint8_t *" is incompatible with parameter of type "volatile char *"
   						USART3_puts(&sensorPHinDay[j]);
-User\main.c(188): warning:  #167-D: argument of type "uint8_t *" is incompatible with parameter of type "volatile char *"
+User\main.c(211): warning:  #167-D: argument of type "uint8_t *" is incompatible with parameter of type "volatile char *"
   					USART3_puts(&sensorPHinDay[j]);
-User\main.c(208): warning:  #167-D: argument of type "uint8_t *" is incompatible with parameter of type "volatile char *"
+User\main.c(230): warning:  #167-D: argument of type "uint8_t *" is incompatible with parameter of type "volatile char *"
   						USART3_puts(&sensorTEMPinDay[j]);
-User\main.c(238): warning:  #167-D: argument of type "uint8_t *" is incompatible with parameter of type "volatile char *"
+User\main.c(260): warning:  #167-D: argument of type "uint8_t *" is incompatible with parameter of type "volatile char *"
   					USART3_puts(&sensorTEMPinDay[j]);
-User\main.c(258): warning:  #167-D: argument of type "uint8_t *" is incompatible with parameter of type "volatile char *"
+User\main.c(279): warning:  #167-D: argument of type "uint8_t *" is incompatible with parameter of type "volatile char *"
   						USART3_puts(&sensorTANKinDay[j]);
-User\main.c(290): warning:  #167-D: argument of type "uint8_t *" is incompatible with parameter of type "volatile char *"
+User\main.c(311): warning:  #167-D: argument of type "uint8_t *" is incompatible with parameter of type "volatile char *"
   					USART3_puts(&sensorTANKinDay[j]);
-User\main.c(310): warning:  #167-D: argument of type "uint8_t *" is incompatible with parameter of type "volatile char *"
+User\main.c(330): warning:  #167-D: argument of type "uint8_t *" is incompatible with parameter of type "volatile char *"
   						USART3_puts(&sensorPHinDay[j]);
-User\main.c(341): warning:  #167-D: argument of type "uint8_t *" is incompatible with parameter of type "volatile char *"
+User\main.c(361): warning:  #167-D: argument of type "uint8_t *" is incompatible with parameter of type "volatile char *"
   					USART3_puts(&sensorPHinDay[j]);
-User\main.c(127): warning:  #550-D: variable "prevHour"  was set but never used
+User\main.c(150): warning:  #550-D: variable "prevHour"  was set but never used
   	uint8_t prevHour = 0;
-User\main.c(128): warning:  #550-D: variable "prevMinute"  was set but never used
+User\main.c(151): warning:  #550-D: variable "prevMinute"  was set but never used
   	uint8_t prevMinute = 0;
-User\main.c(529): warning:  #177-D: variable "NumDay"  was declared but never referenced
+User\main.c(559): warning:  #177-D: variable "NumDay"  was declared but never referenced
   	uint8_t NumDay = 0;
-User\main.c(719): warning:  #177-D: variable "bufferSend"  was declared but never referenced
+User\main.c(759): warning:  #177-D: variable "bufferSend"  was declared but never referenced
   	char bufferSend[] = "";
-User\main.c(945): warning:  #177-D: variable "bufferSend"  was declared but never referenced
+User\main.c(985): warning:  #177-D: variable "bufferSend"  was declared but never referenced
   	char bufferSend[] = "";
-User\main.c(1404): warning:  #177-D: variable "bufferSend"  was declared but never referenced
+User\main.c(1463): warning:  #177-D: variable "bufferSend"  was declared but never referenced
   	char bufferSend[] = "";
-User\main.c(1479): warning:  #167-D: argument of type "uint8_t *" is incompatible with parameter of type "volatile char *"
-  						USART3_puts(&GraphPPM[j]);
-User\main.c(1497): warning:  #167-D: argument of type "uint8_t *" is incompatible with parameter of type "volatile char *"
-  						USART3_puts(&GraphTemp[j]);
-User\main.c(1515): warning:  #167-D: argument of type "uint8_t *" is incompatible with parameter of type "volatile char *"
-  						USART3_puts(&GraphTank[j]);
-User\main.c(1533): warning:  #167-D: argument of type "uint8_t *" is incompatible with parameter of type "volatile char *"
-  						USART3_puts(&GraphPH[j]);
-User\main.c(1456): warning:  #550-D: variable "preNumGraph"  was set but never used
+User\main.c(1542): warning:  #167-D: argument of type "uint8_t *" is incompatible with parameter of type "volatile char *"
+  					USART3_puts(&GraphPPM[j]);
+User\main.c(1565): warning:  #167-D: argument of type "uint8_t *" is incompatible with parameter of type "volatile char *"
+  							USART3_puts(&GraphPPM[j]);
+User\main.c(1589): warning:  #167-D: argument of type "uint8_t *" is incompatible with parameter of type "volatile char *"
+  							USART3_puts(&GraphTemp[j]);
+User\main.c(1613): warning:  #167-D: argument of type "uint8_t *" is incompatible with parameter of type "volatile char *"
+  							USART3_puts(&GraphTank[j]);
+User\main.c(1637): warning:  #167-D: argument of type "uint8_t *" is incompatible with parameter of type "volatile char *"
+  							USART3_puts(&GraphPH[j]);
+User\main.c(1515): warning:  #550-D: variable "preNumGraph"  was set but never used
   	uint16_t preNumGraph = 0;
-User\main.c(2340): warning:  #1035-D: single-precision operand implicitly converted to double-precision
+User\main.c(2573): warning:  #1035-D: single-precision operand implicitly converted to double-precision
   		val_con = volt_cur/(1+(0.02*(data_sensor[3]-25)));
-User\main.c(2341): warning:  #1035-D: single-precision operand implicitly converted to double-precision
+User\main.c(2574): warning:  #1035-D: single-precision operand implicitly converted to double-precision
   		data_sensor[0] = ((133.42*val_con*val_con*val_con)-(255.86*val_con*val_con)+(857.39*val_con))*0.5;
-User\main.c(2341): warning:  #1035-D: single-precision operand implicitly converted to double-precision
+User\main.c(2574): warning:  #1035-D: single-precision operand implicitly converted to double-precision
   		data_sensor[0] = ((133.42*val_con*val_con*val_con)-(255.86*val_con*val_con)+(857.39*val_con))*0.5;
-User\main.c(2341): warning:  #1035-D: single-precision operand implicitly converted to double-precision
+User\main.c(2574): warning:  #1035-D: single-precision operand implicitly converted to double-precision
   		data_sensor[0] = ((133.42*val_con*val_con*val_con)-(255.86*val_con*val_con)+(857.39*val_con))*0.5;
-User\main.c(2344): warning:  #1035-D: single-precision operand implicitly converted to double-precision
+User\main.c(2577): warning:  #1035-D: single-precision operand implicitly converted to double-precision
   		data_sensor[1]=volt_cur_ph*3.5 + 1.2;
-User\main.c(2408): warning:  #1035-D: single-precision operand implicitly converted to double-precision
-  		val_con = volt_cur/(1+(0.02*(data_sensor[3]-25)));
-User\main.c(2409): warning:  #1035-D: single-precision operand implicitly converted to double-precision
-  		data_sensor[0] = ((133.42*val_con*val_con*val_con)-(255.86*val_con*val_con)+(857.39*val_con))*0.5;
-User\main.c(2409): warning:  #1035-D: single-precision operand implicitly converted to double-precision
-  		data_sensor[0] = ((133.42*val_con*val_con*val_con)-(255.86*val_con*val_con)+(857.39*val_con))*0.5;
-User\main.c(2409): warning:  #1035-D: single-precision operand implicitly converted to double-precision
-  		data_sensor[0] = ((133.42*val_con*val_con*val_con)-(255.86*val_con*val_con)+(857.39*val_con))*0.5;
-User\main.c(2412): warning:  #1035-D: single-precision operand implicitly converted to double-precision
-  		data_sensor[1]=volt_cur_ph*3.5 + 1.2;
-User\main.c(2439): warning:  #1035-D: single-precision operand implicitly converted to double-precision
+User\main.c(2659): warning:  #1035-D: single-precision operand implicitly converted to double-precision
     float percent = a_setPoint / 100.0;
-User\main.c: 30 warnings, 0 errors
+User\main.c(2703): warning:  #177-D: variable "pherror"  was declared but never referenced
+  	float pherror = 0;
+User\main.c(2744): warning:  #177-D: variable "nearhournow"  was declared but never referenced
+  	uint8_t nearhournow = 0;
+User\main.c(2745): warning:  #177-D: variable "location"  was declared but never referenced
+  	uint8_t location = 0;
+User\main.c: 31 warnings, 0 errors
+compiling list.c...
+compiling timers.c...
+compiling queue.c...
+compiling stm32f4xx_syscfg.c...
+compiling tasks.c...
+compiling heap_4.c...
 compiling stm32f4xx_tim.c...
+compiling port.c...
 compiling rtc_usart.c...
 compiling rtc_i2c.c...
 compiling rtc_ds1307.c...
 compiling ds18b20_mflib.c...
 linking...
-Program Size: Code=49390 RO-data=938 RW-data=580 ZI-data=82380  
+Program Size: Code=57302 RO-data=938 RW-data=608 ZI-data=82528  
 FromELF: creating hex file...
-".\Objects\FreeRTOS.axf" - 0 Error(s), 30 Warning(s).
+".\Objects\FreeRTOS.axf" - 0 Error(s), 31 Warning(s).
 
 <h2>Software Packages used:</h2>
 
@@ -131,7 +133,7 @@ Package Vendor: Keil
   C:\Users\Admin\AppData\Local\Arm\Packs\Keil\STM32F4xx_DFP\2.14.0\Drivers\CMSIS\Device\ST\STM32F4xx\Include
 
 <h2>Collection of Component Files used:</h2>
-Build Time Elapsed:  00:00:09
+Build Time Elapsed:  00:00:02
 </pre>
 </body>
 </html>

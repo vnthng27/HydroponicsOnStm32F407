@@ -36,7 +36,6 @@ uint8_t ds18b20_init_seq(void)
 	mydelayus(100);
 	if (GPIO_ReadInputDataBit(TXRX_PORT, TXRX_PIN) == Bit_RESET) {
 		mydelayus(500);
-		GPIO_WriteBit(GPIOD,GPIO_Pin_13,Bit_SET);
 		return 1;
 	} else {
 		mydelayus(500);

@@ -6,12 +6,12 @@ int main(void) {
 	GPIO_Configuration();         //Config LED PIN
 	I2C_Config();
 	ADC_Config();
-	TIM_Config();
+	
 	EXTI_Config();
 	//Create Semaphore 
 	xSemaphoreUARTRX = xSemaphoreCreateBinary();
 	xSemaphoreChangepage = xSemaphoreCreateBinary();
-	xSemaphoreSonicSensor = xSemaphoreCreateBinary();
+
 	xSemaphoredosingInterval = xSemaphoreCreateBinary();
 	xSemaphoresensorsReady = xSemaphoreCreateBinary();
 	xSemaphoreHandleData = xSemaphoreCreateBinary();
@@ -19,7 +19,7 @@ int main(void) {
 	xSemaphoreHadData = xSemaphoreCreateBinary();
 	SaveDataEvery3Minute = xSemaphoreCreateBinary();
 	
-	xTaskCreate(handleUARTRX, "xu ly data rev from hmi",  configMINIMAL_STACK_SIZE, NULL, 1, NULL);
+	xTaskCreate(handleUARTRX, "xu ly data rev from hmi",  configMINIMAL_STACK_SIZE, NULL, 2, NULL);
 	xTaskCreate(handleHMI, "xu ly HMI",  configMINIMAL_STACK_SIZE, NULL, 1, NULL);
 	//Tasks handle page HMI
 	xTaskCreate(pageHome, "pageHome",  configMINIMAL_STACK_SIZE, NULL, 1, &TaskpageHome);
@@ -42,6 +42,7 @@ int main(void) {
 	xTaskCreate(pageSetting, "pageSetting",  configMINIMAL_STACK_SIZE, NULL, 1, &TaskpageSetting);
 	xTaskCreate(pageSettingDate, "pageSettingDate",  configMINIMAL_STACK_SIZE, NULL, 1, &TaskpageSettingDate);
 	xTaskCreate(pageRefilldate, "pageRefilldate",  configMINIMAL_STACK_SIZE, NULL, 1, &TaskpageRefilldate);
+	xTaskCreate(pageCal, "pageCal",  40, NULL, 1, &TaskpageCal);
 	xTaskCreate(pageCalpH, "pageCalpH",  configMINIMAL_STACK_SIZE, NULL, 1, &TaskpageCalpH);
 	xTaskCreate(pageCalPPM, "pageCalPPM",  configMINIMAL_STACK_SIZE, NULL, 1, &TaskpageCalPPM);
 	xTaskCreate(pageCalTemp, "pageCalTemp",  configMINIMAL_STACK_SIZE, NULL, 1, &TaskpageCalTemp);
@@ -49,19 +50,55 @@ int main(void) {
 	xTaskCreate(pageFlow, "pageFlow",  configMINIMAL_STACK_SIZE, NULL, 1, &TaskpageFlow);
 	xTaskCreate(pageProfile, "pageProfile",  configMINIMAL_STACK_SIZE, NULL, 1, &TaskpageProfile);
 	xTaskCreate(pageFeritilizer, "pageFeritilizer",  configMINIMAL_STACK_SIZE, NULL, 1, &TaskpageFeritilizer);
-	xTaskCreate(readSensor, "readSensor", 200, NULL, 1, NULL);
+	
+	//Task control systerm
+	xTaskCreate(readSensor, "readSensor", 200, NULL, 2, NULL);
+	xTaskCreate(handleRTC, "handleRTC", configMINIMAL_STACK_SIZE, NULL, 2, NULL);
+	xTaskCreate(runPeristaltic, "runPeristaltic",  configMINIMAL_STACK_SIZE, NULL, 2, &runPer);
 //	xTaskCreate(temperature_task, "temperature_task", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
 //	xTaskCreate(sonic_task, "sonic_task", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
 //	xTaskCreate(adc_task, "adc_task", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
 	//xTaskCreate(ControlWater, "ControlEnviromental", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
-//	xTaskCreate(WaterPlants, "WaterPlants", 200, NULL, 1, NULL);
+	xTaskCreate(WaterPlants, "WaterPlants", 400, NULL, 2, NULL);
+	xTaskCreate(DrainingWater, "DrainingWater", 200, NULL, 1, NULL);
+	xTaskCreate(I2C_ESP, "I2C_ESP", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
 	vTaskStartScheduler();
-
 	
 	for(;;){}
 }
 
+void TIM1_BRK_TIM9_IRQHandler() {
+	uint16_t capture = 0;
+	//static BaseType_t xHigherPriorityTaskWoken ;
+	//xHigherPriorityTaskWoken = pdFALSE ;
+	if (TIM_GetITStatus(TIM9, TIM_IT_CC1) != RESET) {
+    //TIM_ClearITPendingBit(TIM9, TIM_IT_CC1);
 
+    /* LED4 toggling with frequency = 500 Hz (Debug hardware) */
+		
+    GPIO_ToggleBits(GPIOD,GPIO_Pin_6);
+    capture = TIM_GetCapture1(TIM9);
+//		if (swapPWM == true) {
+//			capture = 1000;
+//			swapPWM = false;
+//		}
+//		else {
+//			swapPWM = true;
+//			capture += CCR4_Val;
+//		}
+    //TIM_SetCompare1(TIM9, capture + CCR4_Val);
+  }
+	//portYIELD_FROM_ISR( xHigherPriorityTaskWoken );	
+}
+void TIM4_IRQHandler() {
+	static BaseType_t xHigherPriorityTaskWoken ;
+	xHigherPriorityTaskWoken = pdFALSE ;
+	if (TimeOut != 0x0)
+  {
+    TimeOut--;
+  }
+	portYIELD_FROM_ISR( xHigherPriorityTaskWoken );	
+}
 void USART3_IRQHandler() {
 	static BaseType_t xHigherPriorityTaskWoken ;
 	xHigherPriorityTaskWoken = pdFALSE ;
@@ -80,16 +117,6 @@ void USART3_IRQHandler() {
 	}	
 	portYIELD_FROM_ISR( xHigherPriorityTaskWoken );	
 }
-void USART2_IRQHandler() {
-	static BaseType_t xHigherPriorityTaskWoken ;
-	xHigherPriorityTaskWoken = pdFALSE ;
-	if (USART_GetITStatus(USART2,USART_IT_RXNE)==SET && FlagTC == FALSE)
-	{
-		xSemaphoreGiveFromISR( xSemaphoreSonicSensor, &xHigherPriorityTaskWoken );
-		USART_ClearFlag(USART2,USART_FLAG_RXNE);
-	}
-	portYIELD_FROM_ISR( xHigherPriorityTaskWoken );	
-}
 void USART3_puts(volatile char *s) {
     while(*s){
 		  // wait until data register is empty
@@ -106,17 +133,13 @@ void USART3_puts(volatile char *s) {
 void EXTI1_IRQHandler(void) {
 	static BaseType_t xHigherPriorityTaskWoken ;
 	xHigherPriorityTaskWoken = pdFALSE ;
-  if(EXTI_GetITStatus(EXTI_Line1) != RESET)
+  if(GPIO_ReadInputDataBit(GPIOB,GPIO_Pin_1) == SET && StartWaterPlant == true)
   {
-		if (GPIO_ReadInputDataBit(GPIOB,GPIO_Pin_1) == Bit_RESET) {
-			//xSemaphoreGiveFromISR( xSemaphoreEXTIZCD, &xHigherPriorityTaskWoken );
-			//GPIO_WriteBit(GPIOD,GPIO_Pin_4,Bit_SET);
-			//GPIO_WriteBit(GPIOD,GPIO_Pin_5,Bit_SET);
-		}
+		xSemaphoreGiveFromISR( xSemaphoreEXTIZCD, &xHigherPriorityTaskWoken );
 		/* Clear the EXTI line 1 pending bit */
     EXTI_ClearITPendingBit(EXTI_Line1);
   }
-	portYIELD_FROM_ISR( xHigherPriorityTaskWoken );	
+	portYIELD_FROM_ISR( xHigherPriorityTaskWoken );
 }
 
 void EndData(void) {
@@ -155,7 +178,7 @@ void pageHome(void *pvParameters) {
 				
 				prevID = IDHMI;
 				
-				USART3_puts("t0.txt=\"PPM\"");
+				USART3_puts("t20.txt=\"PPM\"");
 				EndData();
 				
 				USART3_puts("b0.bco=1024");
@@ -167,15 +190,15 @@ void pageHome(void *pvParameters) {
 				USART3_puts("b2.bco=50712");
 				EndData();
 				
-				sprintf(bufferSend,"t4.txt=\"%d\"",tdsOffset);
+				sprintf(bufferSend,"t24.txt=\"%d\"",tdsOffsetALL);
 				USART3_puts(&bufferSend[0]);
 				EndData();
 				
-				sprintf(bufferSend,"t7.txt=\"%d\"",targetMinTds);
+				sprintf(bufferSend,"t27.txt=\"%d\"",targetMinTdsALL);
 				USART3_puts(&bufferSend[0]);
 				EndData();
 				
-				sprintf(bufferSend,"t8.txt=\"%d\"",targetMaxTds);
+				sprintf(bufferSend,"t28.txt=\"%d\"",targetMaxTdsALL);
 				USART3_puts(&bufferSend[0]);
 				EndData();
 				
@@ -189,11 +212,10 @@ void pageHome(void *pvParameters) {
 				}
 				preNumValSaved = NumValSaved;
 			}
-			sprintf(bufferSend,"t3.txt=\"%0.1f\"",data_sensor[0]);
+			sprintf(bufferSend,"t23.txt=\"%0.1f\"",data_sensor[0]);
 			USART3_puts(&bufferSend[0]);
 			EndData();
 			xSemaphoreGive(xSemaphoreHandleData);
-			vTaskDelay(250/portTICK_PERIOD_MS);
 		}
 		else if (IDHMI == 0x02 && DataHMI[0] == 2) {
 			if (prevID != IDHMI) {
@@ -210,7 +232,7 @@ void pageHome(void *pvParameters) {
 				}
 				
 				prevID = IDHMI;
-				USART3_puts("t0.txt=\"TEMPERATURE\"");
+				USART3_puts("t20.txt=\"TEMPERATURE\"");
 				EndData();
 				USART3_puts("b0.bco=50712");
 				EndData();
@@ -221,11 +243,11 @@ void pageHome(void *pvParameters) {
 				USART3_puts("b2.bco=50712");
 				EndData();
 				
-				USART3_puts("t4.txt=\"\"");
+				USART3_puts("t24.txt=\"\"");
 				EndData();
-				USART3_puts("t7.txt=\"\"");
+				USART3_puts("t27.txt=\"\"");
 				EndData();
-				USART3_puts("t8.txt=\"\"");
+				USART3_puts("t28.txt=\"\"");
 				EndData();
 				
 			}
@@ -239,11 +261,10 @@ void pageHome(void *pvParameters) {
 				}
 				preNumValSaved = NumValSaved;
 			}
-			sprintf(bufferSend,"t3.txt=\"%0.1f\"",data_sensor[3]);
+			sprintf(bufferSend,"t23.txt=\"%0.1f\"",data_sensor[3]);
 			USART3_puts(&bufferSend[0]);
 			EndData();
 			xSemaphoreGive(xSemaphoreHandleData);
-			vTaskDelay(250/portTICK_PERIOD_MS);
 		}
 		else if (IDHMI == 0x03 && DataHMI[0] == 3) {
 			if (prevID != IDHMI) {
@@ -259,7 +280,7 @@ void pageHome(void *pvParameters) {
 					}
 				}
 				prevID = IDHMI;
-				USART3_puts("t0.txt=\"TANK\"");
+				USART3_puts("t20.txt=\"TANK\"");
 				EndData();
 				USART3_puts("b0.bco=50712");
 				EndData();
@@ -270,13 +291,13 @@ void pageHome(void *pvParameters) {
 				USART3_puts("b2.bco=50712");
 				EndData();
 				
-				sprintf(bufferSend,"t4.txt=\"%d\"",TankLvOffset);
+				sprintf(bufferSend,"t24.txt=\"%d\"",TankLvOffset);
 				USART3_puts(&bufferSend[0]);
 				EndData();
-				sprintf(bufferSend,"t7.txt=\"%d\"",targetMinTankLv);
+				sprintf(bufferSend,"t27.txt=\"%d\"",targetMinTankLv);
 				USART3_puts(&bufferSend[0]);
 				EndData();
-				sprintf(bufferSend,"t8.txt=\"%d\"",targetMaxTankLv);
+				sprintf(bufferSend,"t28.txt=\"%d\"",targetMaxTankLv);
 				USART3_puts(&bufferSend[0]);
 				EndData();
 				
@@ -291,11 +312,10 @@ void pageHome(void *pvParameters) {
 				}
 				preNumValSaved = NumValSaved;
 			}
-			sprintf(bufferSend,"t3.txt=\"%0.1f\"",data_sensor[2]);
+			sprintf(bufferSend,"t23.txt=\"%0.1f\"",data_sensor[2]);
 			USART3_puts(&bufferSend[0]);
 			EndData();
 			xSemaphoreGive(xSemaphoreHandleData);
-			vTaskDelay(250/portTICK_PERIOD_MS);
 		}
 		else if (IDHMI == 0x04 && DataHMI[0] == 4) {
 			if (prevID != IDHMI) {
@@ -311,7 +331,7 @@ void pageHome(void *pvParameters) {
 					}
 				}
 				prevID = IDHMI;
-				USART3_puts("t0.txt=\"PH\"");
+				USART3_puts("t20.txt=\"PH\"");
 				EndData();
 				USART3_puts("b0.bco=50712");
 				EndData();
@@ -322,13 +342,13 @@ void pageHome(void *pvParameters) {
 				USART3_puts("b2.bco=1024");
 				EndData();
 				
-				sprintf(bufferSend,"t4.txt=\"%0.1f\"",phOffset);
+				sprintf(bufferSend,"t24.txt=\"%0.1f\"",phOffset);
 				USART3_puts(&bufferSend[0]);
 				EndData();
-				sprintf(bufferSend,"t7.txt=\"%0.1f\"",targetMinPh);
+				sprintf(bufferSend,"t27.txt=\"%0.1f\"",targetMinPh);
 				USART3_puts(&bufferSend[0]);
 				EndData();
-				sprintf(bufferSend,"t8.txt=\"%0.1f\"",targetMaxPh);
+				sprintf(bufferSend,"t28.txt=\"%0.1f\"",targetMaxPh);
 				USART3_puts(&bufferSend[0]);
 				EndData();
 			}
@@ -342,14 +362,24 @@ void pageHome(void *pvParameters) {
 				}
 				preNumValSaved = NumValSaved;
 			}
-			sprintf(bufferSend,"t3.txt=\"%0.1f\"",data_sensor[1]);
+			sprintf(bufferSend,"t23.txt=\"%0.1f\"",data_sensor[1]);
 			USART3_puts(&bufferSend[0]);
 			EndData();
 			xSemaphoreGive(xSemaphoreHandleData);
-			vTaskDelay(250/portTICK_PERIOD_MS);
 		}
-		else
-			xSemaphoreGive(xSemaphoreHandleData);
+//		else
+//			xSemaphoreGive(xSemaphoreHandleData);
+		if (page != HOME) 
+		{
+			vTaskSuspend(NULL);
+		}
+		sprintf(bufferSend,"hour.val=%d",rtc_getdatetime.hour);
+		USART3_puts(&bufferSend[0]);
+		EndData();
+		sprintf(bufferSend,"minute.txt=\"%d\"",rtc_getdatetime.minutes);
+		USART3_puts(&bufferSend[0]);
+		EndData();
+		vTaskDelay(300);
 	}
 }
 void pageWarning(void *pvParameters) {
@@ -606,6 +636,8 @@ void pagePPM2(void *pvParameters) {
 			if (IDHMI == 0x03) {
 				count = 0;
 				PPMStage[0] = (uint16_t)((DataHMI[1]<<8) | DataHMI[0]);
+				if (PPMStage[0] < targetMinTdsALL - tdsOffsetALL ||PPMStage[0] > targetMaxTdsALL + tdsOffsetALL)
+					PPMStage[0] = 0;
 				while (DataHMI[count+2] != 0) {
 					DayPPMStageOne[count] = DataHMI[count+2];
 					count ++ ;
@@ -615,6 +647,8 @@ void pagePPM2(void *pvParameters) {
 			if (IDHMI == 0x04) {
 				count = 0;
 				PPMStage[1] = (uint16_t)((DataHMI[1]<<8) | DataHMI[0]);
+				if (PPMStage[1] < targetMinTdsALL - tdsOffsetALL ||PPMStage[1] > targetMaxTdsALL + tdsOffsetALL)
+					PPMStage[1] = 0;
 				while (DataHMI[count+2] != 0) {
 					DayPPMStageTwo[count] = DataHMI[count+2];
 					count ++ ;
@@ -624,6 +658,8 @@ void pagePPM2(void *pvParameters) {
 			if (IDHMI == 0x05) {
 				count = 0;
 				PPMStage[2] = (uint16_t)((DataHMI[1]<<8) | DataHMI[0]);
+				if (PPMStage[2] < targetMinTdsALL - tdsOffsetALL ||PPMStage[2] > targetMaxTdsALL + tdsOffsetALL)
+					PPMStage[2] = 0;
 				while (DataHMI[count+2] != 0) {
 					DayPPMStageThree[count] = DataHMI[count+2];
 					count ++ ;
@@ -633,6 +669,8 @@ void pagePPM2(void *pvParameters) {
 			if (IDHMI == 0x06) {
 				count = 0;
 				PPMStage[3] = (uint16_t)((DataHMI[1]<<8) | DataHMI[0]);
+				if (PPMStage[3] < targetMinTdsALL - tdsOffsetALL ||PPMStage[3] > targetMaxTdsALL + tdsOffsetALL)
+					PPMStage[3] = 0;
 				while (DataHMI[count+2] != 0) {
 					DayPPMStageFour[count] = DataHMI[count+2];
 					count ++ ;
@@ -642,6 +680,8 @@ void pagePPM2(void *pvParameters) {
 			if (IDHMI == 0x07) {
 				count = 0;
 				PPMStage[4] = (uint16_t)((DataHMI[1]<<8) | DataHMI[0]);
+				if (PPMStage[4] < targetMinTdsALL - tdsOffsetALL ||PPMStage[4] > targetMaxTdsALL + tdsOffsetALL)
+					PPMStage[4] = 0;
 				while (DataHMI[count+2] != 0) {
 					DayPPMStageFive[count] = DataHMI[count+2];
 					count ++ ;
@@ -1183,18 +1223,22 @@ void pagePeristaltic(void *pvParameters) {
 				case 0x00: {
 					USART3_puts("t2.txt=\"A\"");
 					EndData();
+					break;
 				}
 				case 0x01: {
 					USART3_puts("t2.txt=\"B\"");
 					EndData();
+					break;
 				}
 				case 0x02: {
 					USART3_puts("t2.txt=\"PH UP\"");
 					EndData();
+					break;
 				}
 				case 0x03: {
 					USART3_puts("t2.txt=\"PH DOWN\"");
 					EndData();
+					break;
 				}
 			}
 			sprintf(bufferSend,"n1.val=%d",PerPumpTwoInfo[0]);
@@ -1208,18 +1252,22 @@ void pagePeristaltic(void *pvParameters) {
 				case 0x00: {
 					USART3_puts("t1.txt=\"A\"");
 					EndData();
+					break;
 				}
 				case 0x01: {
 					USART3_puts("t1.txt=\"B\"");
 					EndData();
+					break;
 				}
 				case 0x02: {
 					USART3_puts("t1.txt=\"PH UP\"");
 					EndData();
+					break;
 				}
 				case 0x03: {
 					USART3_puts("t1.txt=\"PH DOWN\"");
 					EndData();
+					break;
 				}
 			}
 			
@@ -1238,21 +1286,24 @@ void pagePeristaltic(void *pvParameters) {
 				case 0x01: {
 					USART3_puts("t3.txt=\"B\"");
 					EndData();
+					break;
 				}
 				case 0x02: {
 					USART3_puts("t3.txt=\"PH UP\"");
 					EndData();
+					break;
 				}
 				case 0x03: {
 					USART3_puts("t3.txt=\"PH DOWN\"");
 					EndData();
+					break;
 				}
 			}
 			
-			sprintf(bufferSend,"n3.val=%d",PerPumpThreeInfo[0]);
+			sprintf(bufferSend,"n3.val=%d",PerPumpFourInfo[0]);
 			USART3_puts(&bufferSend[0]);
 			EndData();
-			sprintf(bufferSend,"h3.val=%d",PerPumpThreeInfo[0]);
+			sprintf(bufferSend,"h3.val=%d",PerPumpFourInfo[0]);
 			USART3_puts(&bufferSend[0]);
 			EndData();
 			
@@ -1260,18 +1311,22 @@ void pagePeristaltic(void *pvParameters) {
 				case 0x00: {
 					USART3_puts("t4.txt=\"A\"");
 					EndData();
+					break;
 				}
 				case 0x01: {
 					USART3_puts("t4.txt=\"B\"");
 					EndData();
+					break;
 				}
 				case 0x02: {
 					USART3_puts("t4.txt=\"PH UP\"");
 					EndData();
+					break;
 				}
 				case 0x03: {
 					USART3_puts("t4.txt=\"PH DOWN\"");
 					EndData();
+					break;
 				}
 			}
 			reloadPage = false;
@@ -1310,13 +1365,15 @@ void pagePump(void *pvParameters) {
 			USART3_puts(&bufferSend[0]);
 			EndData();
 			switch (PumpAcOneInfo[1]) {
-				case 0x00: {
+				case 0x01: {
 					USART3_puts("t1.txt=\"OUT\"");
 					EndData();
+					break;
 				}
-				case 0x01: {
+				case 0x02: {
 					USART3_puts("t2.txt=\"IN\"");
 					EndData();
+					break;
 				}
 			}
 			
@@ -1327,13 +1384,15 @@ void pagePump(void *pvParameters) {
 			USART3_puts(&bufferSend[0]);
 			EndData();
 			switch (PumpAcTwoInfo[1]) {
-				case 0x00: {
+				case 0x01: {
 					USART3_puts("t1.txt=\"OUT\"");
 					EndData();
+					break;
 				}
-				case 0x01: {
+				case 0x02: {
 					USART3_puts("t2.txt=\"IN\"");
 					EndData();
+					break;
 				}
 			}
 			reloadPage = false;
@@ -1462,82 +1521,127 @@ void pageGraph(void *pvParameters) {
 			reloadPage = false;
 			prevID = 10;
 			preNumGraph = 0;
-
-		}
-		if (IDHMI == 0x00 && DataHMI[0] == 0) {
-			if (prevID != IDHMI ) {
-				USART3_puts("b1.bco=1024");
+			NumGraph = 0;
+			
+			USART3_puts("b1.bco=1024");
+			EndData();
+			USART3_puts("b2.bco=50712");
+			EndData();
+			USART3_puts("b4.bco=50712");
+			EndData();
+			USART3_puts("b3.bco=50712");
+			EndData();
+			USART3_puts("cle 3,0");
+			EndData();
+			NumGraph = mystrlength(&GraphPH[0]);
+			if (NumGraph > 0 ) {
+				sprintf(bufferSend,"addt 19,0,%d",NumGraph);
+				USART3_puts(&bufferSend[0]);
 				EndData();
-				USART3_puts("cle 3,0");
-				EndData();
-				NumGraph = mystrlength(&GraphPH[0]);
-				if (NumGraph > 0 ) {
-					sprintf(bufferSend,"addt 19,0,%d",NumGraph);
-					USART3_puts(&bufferSend[0]);
-					EndData();
-					for (int j = 0; j<NumGraph+1;j++) {
-						USART3_puts(&GraphPPM[j]);
-					}
+				for (int j = 0; j<NumGraph+1;j++) {
+					USART3_puts(&GraphPPM[j]);
 				}
-				prevID = IDHMI;
 			}
 		}
-		else if (IDHMI == 0x01 && DataHMI[0] == 1) {
-			if (prevID != IDHMI ) {
-				USART3_puts("b2.bco=1024");
-				EndData();
-				USART3_puts("cle 3,0");
-				EndData();
-				NumGraph = mystrlength(&GraphTemp[0]);
-				if (NumGraph > 0 ) {
-					sprintf(bufferSend,"addt 19,0,%d",NumGraph);
-					USART3_puts(&bufferSend[0]);
+		if (xSemaphoreTake( xSemaphoreHadData,1000) == pdTRUE) {
+			if (IDHMI == 0x00 && DataHMI[0] == 0) {
+				if (prevID != IDHMI ) {
+					USART3_puts("b1.bco=1024");
 					EndData();
-					for (int j = 0; j<NumGraph+1;j++) {
-						USART3_puts(&GraphTemp[j]);
-					}
-				}
-				prevID = IDHMI;
-			}
-		}	
-		else if (IDHMI == 0x03 && DataHMI[0] == 3) {
-			if (prevID != IDHMI ) {
-				USART3_puts("b4.bco=1024");
-				EndData();
-				USART3_puts("cle 3,0");
-				EndData();
-				NumGraph = mystrlength(&GraphTank[0]);
-				if (NumGraph > 0 ) {
-					sprintf(bufferSend,"addt 19,0,%d",NumGraph);
-					USART3_puts(&bufferSend[0]);
+					USART3_puts("b2.bco=50712");
 					EndData();
-					for (int j = 0; j<NumGraph+1;j++) {
-						USART3_puts(&GraphTank[j]);
-					}
-				}
-				prevID = IDHMI;
-			}
-		}	
-		else if (IDHMI == 0x04 && DataHMI[0] == 4) {
-			if (prevID != IDHMI ) {
-				USART3_puts("b3.bco=1024");
-				EndData();
-				USART3_puts("cle 3,0");
-				EndData();
-				NumGraph = mystrlength(&GraphPH[0]);
-				if (NumGraph > 0 ) {
-					sprintf(bufferSend,"addt 19,0,%d",NumGraph);
-					USART3_puts(&bufferSend[0]);
+					USART3_puts("b4.bco=50712");
 					EndData();
-					for (int j = 0; j<NumGraph+1;j++) {
-						USART3_puts(&GraphPH[j]);
+					USART3_puts("b3.bco=50712");
+					EndData();
+					USART3_puts("cle 3,0");
+					EndData();
+					NumGraph = mystrlength(&GraphPH[0]);
+					if (NumGraph > 0 ) {
+						sprintf(bufferSend,"addt 19,0,%d",NumGraph);
+						USART3_puts(&bufferSend[0]);
+						EndData();
+						for (int j = 0; j<NumGraph+1;j++) {
+							USART3_puts(&GraphPPM[j]);
+						}
 					}
+					prevID = IDHMI;
 				}
-				prevID = IDHMI;
 			}
-		}	
-		else
+			else if (IDHMI == 0x01 && DataHMI[0] == 1) {
+				if (prevID != IDHMI ) {
+					USART3_puts("b2.bco=1024");
+					EndData();
+					USART3_puts("b1.bco=50712");
+					EndData();
+					USART3_puts("b4.bco=50712");
+					EndData();
+					USART3_puts("b3.bco=50712");
+					EndData();
+					USART3_puts("cle 3,0");
+					EndData();
+					NumGraph = mystrlength(&GraphTemp[0]);
+					if (NumGraph > 0 ) {
+						sprintf(bufferSend,"addt 19,0,%d",NumGraph);
+						USART3_puts(&bufferSend[0]);
+						EndData();
+						for (int j = 0; j<NumGraph+1;j++) {
+							USART3_puts(&GraphTemp[j]);
+						}
+					}
+					prevID = IDHMI;
+				}
+			}	
+			else if (IDHMI == 0x03 && DataHMI[0] == 3) {
+				if (prevID != IDHMI ) {
+					USART3_puts("b4.bco=1024");
+					EndData();
+					USART3_puts("b1.bco=50712");
+					EndData();
+					USART3_puts("b2.bco=50712");
+					EndData();
+					USART3_puts("b3.bco=50712");
+					EndData();
+					USART3_puts("cle 3,0");
+					EndData();
+					NumGraph = mystrlength(&GraphTank[0]);
+					if (NumGraph > 0 ) {
+						sprintf(bufferSend,"addt 19,0,%d",NumGraph);
+						USART3_puts(&bufferSend[0]);
+						EndData();
+						for (int j = 0; j<NumGraph+1;j++) {
+							USART3_puts(&GraphTank[j]);
+						}
+					}
+					prevID = IDHMI;
+				}
+			}	
+			else if (IDHMI == 0x04 && DataHMI[0] == 4) {
+				if (prevID != IDHMI ) {
+					USART3_puts("b3.bco=1024");
+					EndData();
+					USART3_puts("b1.bco=50712");
+					EndData();
+					USART3_puts("b2.bco=50712");
+					EndData();
+					USART3_puts("b4.bco=50712");
+					EndData();
+					USART3_puts("cle 3,0");
+					EndData();
+					NumGraph = mystrlength(&GraphPH[0]);
+					if (NumGraph > 0 ) {
+						sprintf(bufferSend,"addt 19,0,%d",NumGraph);
+						USART3_puts(&bufferSend[0]);
+						EndData();
+						for (int j = 0; j<NumGraph+1;j++) {
+							USART3_puts(&GraphPH[j]);
+						}
+					}
+					prevID = IDHMI;
+				}
+			}	
 			xSemaphoreGive(xSemaphoreHandleData);
+		}
 	}
 }
 void pageSetting(void *pvParameters) {
@@ -1569,6 +1673,14 @@ void pageSetting(void *pvParameters) {
 		if (xSemaphoreTake( xSemaphoreHadData,1000) == pdTRUE) {
 			if (IDHMI == 0 && DataHMI[0] == 0x01) {
 				RefillWhenLow = !RefillWhenLow;
+				if (RefillWhenLow) {
+					USART3_puts("b1.bco=1024");
+					EndData();
+				}
+				else {
+					USART3_puts("b1.bco=50712");
+					EndData();
+				}
 			}
 			if (IDHMI == 4) {
 				DisplayTimeOut[0] = (uint16_t) (uint16_t)((DataHMI[1]<<8) | DataHMI[0]);
@@ -1587,7 +1699,7 @@ void pageSettingDate(void *pvParameters) {
 	while (1) {
 		prevpage = SETTING_DATE;
 		if (xSemaphoreTake( xSemaphoreHadData,1000) == pdTRUE) {
-			if (IDHMI == 4) {
+			if (IDHMI == 1) {
 				rtc_setdatetime.day = DataHMI[0];
 				rtc_setdatetime.date = DataHMI[1];
 				rtc_setdatetime.month = DataHMI[2];
@@ -1595,6 +1707,7 @@ void pageSettingDate(void *pvParameters) {
 				rtc_setdatetime.hour = DataHMI[4];
 				rtc_setdatetime.minutes = DataHMI[5];
 				rtc_setdatetime.seconds = DataHMI[6];
+				ds1307_init_rtc(1);
 				ds1307_set_rtc_datetime(&rtc_setdatetime);
 			}
 			xSemaphoreGive(xSemaphoreHandleData);
@@ -1613,6 +1726,13 @@ void pageRefilldate(void *pvParameters) {
 		}
 	}
 }
+void pageCal(void *pvParameters) {
+	vTaskSuspend(NULL);
+	while (1) {
+		prevpage = CAL;
+		vTaskDelay(4294967295);
+	}
+}
 void pageCalpH(void *pvParameters) {
 	char bufferSend[] = "";
 	vTaskSuspend(NULL);
@@ -1629,7 +1749,7 @@ void pageCalpH(void *pvParameters) {
 		EndData(); 	
 		if (xSemaphoreTake( xSemaphoreHadData,400) == pdTRUE) {
 			if (IDHMI == 0) {
-				sensorPHCalibration = (float)(((DataHMI[1]<<8) | DataHMI[0])/10);
+				sensorPHCalibration = ((float)((DataHMI[1]<<8) | DataHMI[0]))/10;
 			}
 			xSemaphoreGive(xSemaphoreHandleData);
 		}
@@ -1651,8 +1771,8 @@ void pageCalPPM(void *pvParameters) {
 		USART3_puts(&bufferSend[0]);
 		EndData(); 	
 		if (xSemaphoreTake( xSemaphoreHadData,400) == pdTRUE) {
-			if (IDHMI == 0) {
-				sensorPPMCalibration = (uint16_t)(((DataHMI[1]<<8) | DataHMI[0])/10);
+			if (IDHMI == 1) {
+				sensorPPMCalibration = (uint16_t)((DataHMI[1]<<8) | DataHMI[0]);
 			}
 			xSemaphoreGive(xSemaphoreHandleData);
 		}
@@ -1674,8 +1794,8 @@ void pageCalTemp(void *pvParameters) {
 		USART3_puts(&bufferSend[0]);
 		EndData(); 	
 		if (xSemaphoreTake( xSemaphoreHadData,400) == pdTRUE) {
-			if (IDHMI == 0) {
-				sensorTempCalibration = (float)(((DataHMI[1]<<8) | DataHMI[0])/10);
+			if (IDHMI == 2) {
+				sensorTempCalibration = (float)((DataHMI[1]<<8) | DataHMI[0]);
 			}
 			xSemaphoreGive(xSemaphoreHandleData);
 		}
@@ -1693,12 +1813,12 @@ void pageCalSonic(void *pvParameters) {
 			EndData();
 			reloadPage = false;
 		}
-		sprintf(bufferSend,"t3.txt=\"%0.1f\"",data_sensor[3]);
+		sprintf(bufferSend,"t3.txt=\"%0.1f\"",data_sensor[2]);
 		USART3_puts(&bufferSend[0]);
 		EndData(); 	
 		if (xSemaphoreTake( xSemaphoreHadData,400) == pdTRUE) {
-			if (IDHMI == 0) {
-				sensorSonicCalibration = (uint16_t)(((DataHMI[1]<<8) | DataHMI[0])/10);
+			if (IDHMI == 3) {
+				sensorSonicCalibration = (uint16_t)((DataHMI[1]<<8) | DataHMI[0]);
 			}
 			xSemaphoreGive(xSemaphoreHandleData);
 		}
@@ -1734,8 +1854,8 @@ void pageFeritilizer(void *pvParameters) {
 		}
 		if (xSemaphoreTake( xSemaphoreHadData,1000) == pdTRUE) {
 			if (IDHMI == 1) {
-				Ratio[0] = DataHMI[0];
-				Ratio[1] = DataHMI[1];
+				Ratio[0] = (uint16_t) DataHMI[1]<<8 | DataHMI[0];
+				Ratio[1] = (uint16_t) DataHMI[3]<<8 | DataHMI[2];
 			}
 			xSemaphoreGive(xSemaphoreHandleData);
 		}
@@ -1747,10 +1867,10 @@ void handleHMI(void *pvParameters) {
 			if (xSemaphoreTake(xSemaphoreChangepage,portMAX_DELAY) == pdTRUE)
 			{
 				xSemaphoreGive(xSemaphoreHandleData);
-				switch (prevpage) {
+ 				switch (prevpage) {
 					case HOME:
 					{
-						vTaskSuspend(TaskpageHome);
+						//vTaskSuspend(TaskpageHome);
 						break;
 					}
 					case WARINING:
@@ -1846,6 +1966,11 @@ void handleHMI(void *pvParameters) {
 					case REFILL_DATE:
 					{
 						vTaskSuspend(TaskpageRefilldate);
+						break;
+					}
+					case CAL:
+					{
+						vTaskSuspend(TaskpageCal);
 						break;
 					}
 					case CAL_PH:
@@ -2006,6 +2131,12 @@ void handleHMI(void *pvParameters) {
 						vTaskResume(TaskpageRefilldate);
 						break;
 					}
+					case CAL:
+					{
+						reloadPage = true;
+						vTaskResume(TaskpageCal);
+						break;
+					}
 					case CAL_PH:
 					{
 						reloadPage = true;
@@ -2055,6 +2186,7 @@ void handleHMI(void *pvParameters) {
 }
 
 void handleUARTRX(void *pvParameters) {
+	TIM_Config();
 	memset(DataHMIREV,'\0',LENGTH_DATA_HMI);
 	while(1)
 	{	
@@ -2075,7 +2207,7 @@ void handleUARTRX(void *pvParameters) {
 								break;
 							}
 							case BYTE_FIRST_SEND_DATA: {
-								if (mystrlength(DataHMIREV) >= 5) {
+								if (mystrlength(DataHMIREV) >= 5 || page == PUMP2 || page == PUMP3) {
 									typedata = SEND_DATA;
 								}
 								else {
@@ -2230,10 +2362,6 @@ void handleUARTRX(void *pvParameters) {
 									page = FERITILIZER;
 									break;
 								}
-								default:
-								{
-									page = UNKNOWNPAGE;
-								}
 							}
 							FlagTC = FALSE;
 							xSemaphoreGive(xSemaphoreChangepage); // Give Semaphore to task handleHMI
@@ -2256,7 +2384,8 @@ void handleUARTRX(void *pvParameters) {
 									}
 									if (page == PPM || page == PPM2 || page == PH || page == TANK || page == VALVE || page == VALVE2 || page == PERISTALTIC_PUMP ||
 											page == PUMP || page == PUMP2 || page == PUMP3 || page == PUMP4 || page == SETTING || page == SETTING_DATE || 
-											page == REFILL_DATE || page == CAL_PH || page == CAL_PPM || page == CAL_TEMP || page == CAL_SONIC || page == FERITILIZER)
+											page == REFILL_DATE || page == CAL_PH || page == CAL_PPM || page == CAL_TEMP || page == CAL_SONIC || page == FERITILIZER ||
+											page == GRAPH)
 										xSemaphoreGive(xSemaphoreHadData);
 									FlagTC = FALSE;
 									memset(DataHMIREV,'\0',LENGTH_DATA_HMI);
@@ -2288,17 +2417,114 @@ void display_rtc(rtc_ds1307_datetime_t *rtc_datetime) {
     return;
 }
 void handleRTC(void *pvParameters) {
-	rtc_ds1307_datetime_t rtc_datetime;
+	uint8_t prevMinuteSaved = 0;
+	
+	
+	
+	uint16_t Temp = 0;
+	uint32_t SumGraphPH = 0;
+	uint32_t SumGraphPPM = 0;
+	uint32_t SumGraphTEMP = 0;
+	uint32_t SumGraphTank = 0;
+	uint8_t prevHourDoser = 0;
+	
+	uint16_t countDataGraph = 0;
+	ds1307_get_rtc_datetime(&rtc_getdatetime);
+	prevHourDoser = rtc_getdatetime.hour;
+	prevMinuteSaved = rtc_getdatetime.minutes;
+	
+	uint8_t lengArray = 0;
 	while (1) {
-		ds1307_get_rtc_datetime(&rtc_getdatetime);
-		display_rtc(&rtc_datetime);
-		vTaskDelay(1000);
+		if (page != SETTING_DATE)
+			ds1307_get_rtc_datetime(&rtc_getdatetime);
+		
+		if ((uint8_t)rtc_getdatetime.minutes - prevMinuteSaved >= 2) {
+			xSemaphoreGive(SaveDataEvery3Minute);
+			prevMinuteSaved = rtc_getdatetime.minutes;
+		}
+		if ((uint8_t)rtc_getdatetime.hour - prevHourDoser >= 4){
+			xSemaphoreGive(xSemaphoredosingInterval);
+			prevHourDoser = rtc_getdatetime.hour;
+		}
+		if (rtc_getdatetime.minutes >= 2 && rtc_getdatetime.hour == 0) {
+			Temp = NumValSaved/10;
+			for (uint16_t i = 0;i<Temp;i++) {
+				for (uint16_t j = 0;j<30;j++) {
+					SumGraphPH += sensorPHinDay[30*i+j];
+					SumGraphPPM += sensorPPMinDay[30*i+j];
+					SumGraphTEMP += sensorTEMPinDay[30*i+j];
+					SumGraphTank += sensorTANKinDay[30*i+j];
+				}
+				GraphPH[countDataGraph] = SumGraphPH/30;
+				SumGraphPH = 0;
+				
+				GraphPPM[countDataGraph] = SumGraphPPM/30;
+				SumGraphPPM = 0;
+				
+				GraphTemp[countDataGraph] = SumGraphTEMP/30;
+				SumGraphTEMP = 0;
+				
+				GraphTank[countDataGraph] = SumGraphTank/30;
+				SumGraphTank = 0;
+				
+				countDataGraph++;
+			}
+			memset(sensorPHinDay,'\0',sizeof(sensorPHinDay));
+			memset(sensorPPMinDay,'\0',sizeof(sensorPHinDay));
+			memset(sensorTANKinDay,'\0',sizeof(sensorPHinDay));
+			memset(sensorTEMPinDay,'\0',sizeof(sensorPHinDay));
+			
+			lengArray = mystrlength(&DayPPMStageOne[0]);
+			for (uint8_t i =0;i<lengArray;i++) {
+				if (DayPPMStageOne[i] == rtc_getdatetime.day) {
+						targetTds = PPMStage[0];
+				}
+			}
+			lengArray = mystrlength(&DayPPMStageTwo[0]);
+			for (uint8_t i =0;i<lengArray;i++) {
+				if (DayPPMStageTwo[i] == rtc_getdatetime.day) {
+						targetTds = PPMStage[1];
+				}
+			}
+			lengArray = mystrlength(&DayPPMStageThree[0]);
+			for (uint8_t i =0;i<lengArray;i++) {
+				if (DayPPMStageThree[i] == rtc_getdatetime.day) {
+						targetTds = PPMStage[2];
+				}
+			}
+			lengArray = mystrlength(&DayPPMStageFour[0]);
+			for (uint8_t i =0;i<lengArray;i++) {
+				if (DayPPMStageFour[i] == rtc_getdatetime.day) {
+						targetTds = PPMStage[3];
+				}
+			}
+			lengArray = mystrlength(&DayPPMStageFour[0]);
+			for (uint8_t i =0;i<lengArray;i++) {
+				if (DayPPMStageFour[i] == rtc_getdatetime.day) {
+						targetTds = PPMStage[4];
+				}
+			}
+		}
+		if (rtc_getdatetime.hour > StartPump_hour && rtc_getdatetime.hour <= StopPump_hour && StartWaterPlant == false) {
+			StartWaterPlant = true;
+		}
+		else 
+				StartWaterPlant = false;
+		if (rtc_getdatetime.hour == StartPump_hour && rtc_getdatetime.minutes >= StartPump_minute && StartWaterPlant == false) {
+			StartWaterPlant = true;
+		}
+		else 
+				StartWaterPlant = false;
+		if (rtc_getdatetime.hour == StopPump_hour && rtc_getdatetime.minutes >= StopPump_minute && StartWaterPlant == true){
+			StartWaterPlant = false;
+		}
+		
+		vTaskDelay(400);
 	}
 }
 void readSensor(void *pvParameters) {
 	data_sensor[3]=0.0;
 	
-	uint8_t data_sonic[4];
 	uint8_t data_sonic_trigger = 0x55;
 	uint16_t distance;
 	
@@ -2312,6 +2538,8 @@ void readSensor(void *pvParameters) {
 	unsigned long int sumSensorPPMinDay = 0;
 	unsigned long int sumSensorTANKinDay = 0;
 	unsigned long int sumSensorTEMPinDay = 0;
+	
+	frame datasend;
 	
 	GPIO_WriteBit(GPIOD,GPIO_Pin_2,Bit_SET);
 	GPIO_WriteBit(GPIOD,GPIO_Pin_3,Bit_SET);
@@ -2328,10 +2556,15 @@ void readSensor(void *pvParameters) {
 		data_sensor[3] = ds18b20_read_temp();
 		
 		USART_SendData(USART2,(uint16_t )data_sonic_trigger);
-		for (int i = 0;i<4;i++) {
-			if (xSemaphoreTake( xSemaphoreSonicSensor,portMAX_DELAY) == pdTRUE )
-				data_sonic[i] = (uint8_t)USART_ReceiveData(USART2);
-		}
+		/* Waiting the end of Data transfer */
+		while (USART_GetFlagStatus(USART2,USART_FLAG_TC)==RESET);    
+		while (DMA_GetFlagStatus(DMA1_Stream5,DMA_FLAG_TCIF5)==RESET);
+					 
+		/* Clear DMA Transfer Complete Flags */
+		DMA_ClearFlag(DMA1_Stream5,DMA_FLAG_TCIF5);
+		/* Clear USART Transfer Complete Flags */
+		USART_ClearFlag(USART2,USART_FLAG_TC);
+		
 		distance = (distance &0)| data_sonic[1];
 		distance = (distance <<8)| data_sonic[2];
 		data_sensor[2]=distance;
@@ -2355,63 +2588,50 @@ void readSensor(void *pvParameters) {
 			sensorTANKinDay[NumValSaved] = (uint8_t)(sumSensorTANKinDay/countSavedinDay);
 			sensorTEMPinDay[NumValSaved] = (uint8_t)(sumSensorTEMPinDay/countSavedinDay);
 			NumValSaved++;
-//			memset(sensorPHinDay,'\0',sizeof(sensorPHinDay));
-//			memset(sensorPPMinDay,'\0',sizeof(sensorPHinDay));
-//			memset(sensorTANKinDay,'\0',sizeof(sensorPHinDay));
-//			memset(sensorTEMPinDay,'\0',sizeof(sensorPHinDay));
 			countSavedinDay = 0;
 		}
+		
+		datasend.PH = (double)data_sensor[1];
+		datasend.tds = (double)data_sensor[0];
+		datasend.sonic = (double)data_sensor[2];
+		datasend.temperature= (double)data_sensor[3];
+		
+		memcpy(buffer,&datasend,sizeof(frame));
+		
 		xSemaphoreGive(xSemaphoresensorsReady);
 		vTaskDelay(500/portTICK_PERIOD_MS);
-
 		
 	}
 }
-void temperature_task(void *pvParameters) {
-	data_sensor[3] = 0.0	;
-	while(1) {
-			ds18b20_init_seq();
-			ds18b20_send_rom_cmd(SKIP_ROM_CMD_BYTE);
-			ds18b20_send_function_cmd(CONVERT_T_CMD);
-
-			mydelayus(100);
-
-			ds18b20_init_seq();
-			ds18b20_send_rom_cmd(SKIP_ROM_CMD_BYTE);
-			ds18b20_send_function_cmd(READ_SCRATCHPAD_CMD);
-			data_sensor[3] = ds18b20_read_temp();
-			vTaskDelay(500/portTICK_PERIOD_MS);
-		}
-}
-void sonic_task(void *pvParameters) {
-	uint8_t data_sonic[4];
-	uint8_t data_sonic_trigger = 0x55;
-	uint16_t distance;
+void I2C_ESP(void *pvParameters) {
 	while (1) {
-		USART_SendData(USART2,(uint16_t )data_sonic_trigger);
-		for (int i = 0;i<4;i++) {
-			if (xSemaphoreTake( xSemaphoreSonicSensor,portMAX_DELAY) == pdTRUE )
-				data_sonic[i] = (uint8_t)USART_ReceiveData(USART2);
-		}
-		distance = (distance &0)| data_sonic[1];
-		distance = (distance <<8)| data_sonic[2];
-		data_sensor[2]=distance;
-		vTaskDelay(500/portTICK_PERIOD_MS);
-	}
-}
-void adc_task(void *pvParameters) {
-	float volt_cur=0.0;
-	float val_con = 0.0; 
-	float volt_cur_ph =0.0;
-	while (1) {
-		volt_cur = ((float)uhADCxConvertedValue[1]*3)/4095;
-		val_con = volt_cur/(1+(0.02*(data_sensor[3]-25)));
-		data_sensor[0] = ((133.42*val_con*val_con*val_con)-(255.86*val_con*val_con)+(857.39*val_con))*0.5;
+		I2C_DMACmd(I2C1, ENABLE);
+		while (!I2C_CheckEvent(I2C1, I2C_EVENT_SLAVE_TRANSMITTER_ADDRESS_MATCHED));
+		/* Enable DMA RX Channel */
+		DMA_Cmd(DMA1_Stream6, ENABLE);
+		/* Wait until I2Cx_DMA_STREAM_TX enabled or time out */
+		TimeOut = USER_TIMEOUT;
+		while ((DMA_GetCmdStatus(DMA1_Stream6)!= ENABLE)&&(TimeOut != 0x00));
+		/* Transfer complete or time out */
+		TimeOut = USER_TIMEOUT;
+		while ((DMA_GetFlagStatus(DMA1_Stream6,DMA_FLAG_TCIF6)==RESET)&&(TimeOut != 0x00));
 		
-		volt_cur_ph =(((float)uhADCxConvertedValue[0]*3)/4095);
-		data_sensor[1]=volt_cur_ph*3.5 + 1.2;
-		vTaskDelay(500/portTICK_PERIOD_MS);
-		}
+		TimeOut = USER_TIMEOUT;
+		while ((!I2C_CheckEvent(I2C1, I2C_EVENT_SLAVE_ACK_FAILURE))&&(TimeOut != 0x00));
+		/* Disable DMA TX Channel */
+		DMA_Cmd(DMA1_Stream6, DISABLE);
+		/* Wait until I2Cx_DMA_STREAM_TX disabled or time out */
+		TimeOut = USER_TIMEOUT;
+		while ((DMA_GetCmdStatus(DMA1_Stream6)!= DISABLE)&&(TimeOut != 0x00));
+		
+		/* Disable I2C DMA request */  
+		I2C_DMACmd(I2C1,DISABLE);
+		
+			/* Clear any pending flag on Tx Stream  */
+		DMA_ClearFlag(DMA1_Stream6, DMA_FLAG_TCIF6 | DMA_FLAG_FEIF6 | DMA_FLAG_DMEIF6 | 
+																				 DMA_FLAG_TEIF6 | DMA_FLAG_HTIF6);
+		vTaskDelay(1000);
+	}
 }
 float speedtomils(uint8_t speed){
 	return ((54.0/2549.0)*(float)speed) - 0.2615;
@@ -2477,376 +2697,161 @@ void loadMachineLearning(float *a_sensor, float *a_previousSensor,float *a_senso
   }
   *a_saveResult = true;
 }
-void runDosePHUP(uint8_t speed, uint8_t a_mlis) {
-	TIM_OCInitTypeDef  TIM_OCInitStructure;
-	for (int i = 0; i<4; i++) {
-	if (modePumpDoser[i] == PH_UP) {
-		if( i == 0) {
-			TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM1;
-			TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
-			TIM_OCInitStructure.TIM_Pulse = (2100/speed)*100;
-			TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_High;
-
-			TIM_OC1Init(TIM4, &TIM_OCInitStructure);
-
-			TIM_OC1PreloadConfig(TIM4, TIM_OCPreload_Enable);
-			
-		}
-		else if (i == 1) {
-			TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM1;
-			TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
-			TIM_OCInitStructure.TIM_Pulse = (2100/speed)*100;
-			TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_High;
-
-			TIM_OC2Init(TIM4, &TIM_OCInitStructure);
-
-			TIM_OC2PreloadConfig(TIM4, TIM_OCPreload_Enable);
-		}
-		else if (i == 2) {
-			TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM1;
-			TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
-			TIM_OCInitStructure.TIM_Pulse = (2100/speed)*100;
-			TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_High;
-
-			TIM_OC3Init(TIM4, &TIM_OCInitStructure);
-
-			TIM_OC3PreloadConfig(TIM4, TIM_OCPreload_Enable);
-		}
-		else if ( i== 3) {
-			TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM1;
-			TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
-			TIM_OCInitStructure.TIM_Pulse = (2100/speed)*100;
-			TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_High;
-
-			TIM_OC4Init(TIM4, &TIM_OCInitStructure);
-
-			TIM_OC4PreloadConfig(TIM4, TIM_OCPreload_Enable);
-		}
-		else break;
-		mydelayms((unsigned int)a_mlis*1000);
-		TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Disable;
-		TIM_OC1Init(TIM4, &TIM_OCInitStructure);
-		TIM_OC2Init(TIM4, &TIM_OCInitStructure);
-		TIM_OC3Init(TIM4, &TIM_OCInitStructure);
-		TIM_OC4Init(TIM4, &TIM_OCInitStructure);
-		GPIO_WriteBit(GPIOD,GPIO_Pin_12,Bit_RESET);
-		GPIO_WriteBit(GPIOD,GPIO_Pin_13,Bit_RESET);
-		GPIO_WriteBit(GPIOD,GPIO_Pin_14,Bit_RESET);
-		GPIO_WriteBit(GPIOD,GPIO_Pin_15,Bit_RESET);
-		}		
-	}
-}
-void runDosePHDOWN(uint8_t speed, uint8_t a_mlis) {
-	TIM_OCInitTypeDef  TIM_OCInitStructure;
-	for (int i = 0; i<4; i++) {
-	if (modePumpDoser[i] == PH_DOWN) {
-		if( i == 0) {
-			TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM1;
-			TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
-			TIM_OCInitStructure.TIM_Pulse = (2100/speed)*100;
-			TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_High;
-
-			TIM_OC1Init(TIM3, &TIM_OCInitStructure);
-
-			TIM_OC1PreloadConfig(TIM3, TIM_OCPreload_Enable);
-			
-		}
-		else if (i == 1) {
-			TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM1;
-			TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
-			TIM_OCInitStructure.TIM_Pulse = (2100/speed)*100;
-			TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_High;
-
-			TIM_OC2Init(TIM3, &TIM_OCInitStructure);
-
-			TIM_OC2PreloadConfig(TIM3, TIM_OCPreload_Enable);
-		}
-		else if (i == 2) {
-			TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM1;
-			TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
-			TIM_OCInitStructure.TIM_Pulse = (2100/speed)*100;
-			TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_High;
-
-			TIM_OC3Init(TIM3, &TIM_OCInitStructure);
-
-			TIM_OC3PreloadConfig(TIM3, TIM_OCPreload_Enable);
-		}
-		else if ( i== 3) {
-			TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM1;
-			TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
-			TIM_OCInitStructure.TIM_Pulse = (2100/speed)*100;
-			TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_High;
-
-			TIM_OC4Init(TIM3, &TIM_OCInitStructure);
-
-			TIM_OC4PreloadConfig(TIM3, TIM_OCPreload_Enable);
-		}
-		else break;
-		mydelayms((unsigned int)a_mlis*1000);
-		TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Disable;
-		TIM_OC1Init(TIM3, &TIM_OCInitStructure);
-		TIM_OC2Init(TIM3, &TIM_OCInitStructure);
-		TIM_OC3Init(TIM3, &TIM_OCInitStructure);
-		TIM_OC4Init(TIM3, &TIM_OCInitStructure);
-		GPIO_WriteBit(GPIOD,GPIO_Pin_12,Bit_RESET);
-		GPIO_WriteBit(GPIOD,GPIO_Pin_13,Bit_RESET);
-		GPIO_WriteBit(GPIOD,GPIO_Pin_14,Bit_RESET);
-		GPIO_WriteBit(GPIOD,GPIO_Pin_15,Bit_RESET);
-		}		
-	}
-}
-void runDoseGROUPA(uint8_t speed, uint8_t a_mlis){
-	TIM_OCInitTypeDef  TIM_OCInitStructure;
-	for (int i = 0; i<4; i++) {
-	if (modePumpDoser[i] == FRE_A) {
-		if( i == 0) {
-			TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM1;
-			TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
-			TIM_OCInitStructure.TIM_Pulse = (2100/speed)*100;
-			TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_High;
-
-			TIM_OC1Init(TIM3, &TIM_OCInitStructure);
-
-			TIM_OC1PreloadConfig(TIM3, TIM_OCPreload_Enable);
-			
-		}
-		else if (i == 1) {
-			TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM1;
-			TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
-			TIM_OCInitStructure.TIM_Pulse = (2100/speed)*100;
-			TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_High;
-
-			TIM_OC2Init(TIM3, &TIM_OCInitStructure);
-
-			TIM_OC2PreloadConfig(TIM3, TIM_OCPreload_Enable);
-		}
-		else if (i == 2) {
-			TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM1;
-			TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
-			TIM_OCInitStructure.TIM_Pulse = (2100/speed)*100;
-			TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_High;
-
-			TIM_OC3Init(TIM3, &TIM_OCInitStructure);
-
-			TIM_OC3PreloadConfig(TIM3, TIM_OCPreload_Enable);
-		}
-		else if ( i== 3) {
-			TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM1;
-			TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
-			TIM_OCInitStructure.TIM_Pulse = (2100/speed)*100;
-			TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_High;
-
-			TIM_OC4Init(TIM3, &TIM_OCInitStructure);
-
-			TIM_OC4PreloadConfig(TIM3, TIM_OCPreload_Enable);
-		}
-		else break;
-		mydelayms((unsigned int)a_mlis*1000);
-		TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Disable;
-		TIM_OC1Init(TIM3, &TIM_OCInitStructure);
-		TIM_OC2Init(TIM3, &TIM_OCInitStructure);
-		TIM_OC3Init(TIM3, &TIM_OCInitStructure);
-		TIM_OC4Init(TIM3, &TIM_OCInitStructure);
-		GPIO_WriteBit(GPIOD,GPIO_Pin_12,Bit_RESET);
-		GPIO_WriteBit(GPIOD,GPIO_Pin_13,Bit_RESET);
-		GPIO_WriteBit(GPIOD,GPIO_Pin_14,Bit_RESET);
-		GPIO_WriteBit(GPIOD,GPIO_Pin_15,Bit_RESET);
-		}		
-	}
-}
-void runDoseGROUPB(uint8_t speed, uint8_t a_mlis) {
-	TIM_OCInitTypeDef  TIM_OCInitStructure;
-	for (int i = 0; i<4; i++) {
-	if (modePumpDoser[i] == FRE_B) {
-		if( i == 0) {
-			TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM1;
-			TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
-			TIM_OCInitStructure.TIM_Pulse = (21000/speed)*100;
-			TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_High;
-
-			TIM_OC1Init(TIM4, &TIM_OCInitStructure);
-
-			TIM_OC1PreloadConfig(TIM4, TIM_OCPreload_Enable);
-			
-		}
-		else if (i == 1) {
-			TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM1;
-			TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
-			TIM_OCInitStructure.TIM_Pulse = (21000/speed)*100;
-			TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_High;
-
-			TIM_OC2Init(TIM4, &TIM_OCInitStructure);
-
-			TIM_OC2PreloadConfig(TIM4, TIM_OCPreload_Enable);
-		}
-		else if (i == 2) {
-			TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM1;
-			TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
-			TIM_OCInitStructure.TIM_Pulse = (21000/speed)*100;
-			TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_High;
-
-			TIM_OC3Init(TIM4, &TIM_OCInitStructure);
-
-			TIM_OC3PreloadConfig(TIM4, TIM_OCPreload_Enable);
-		}
-		else if ( i== 3) {
-			TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM1;
-			TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
-			TIM_OCInitStructure.TIM_Pulse = (21000/speed)*100;
-			TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_High;
-
-			TIM_OC4Init(TIM4, &TIM_OCInitStructure);
-
-			TIM_OC4PreloadConfig(TIM4, TIM_OCPreload_Enable);
-		}
-		else break;
-		mydelayms((unsigned int)a_mlis*1000);
-		TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Disable;
-		TIM_OC1Init(TIM4, &TIM_OCInitStructure);
-		TIM_OC2Init(TIM4, &TIM_OCInitStructure);
-		TIM_OC3Init(TIM4, &TIM_OCInitStructure);
-		TIM_OC4Init(TIM4, &TIM_OCInitStructure);
-		GPIO_WriteBit(GPIOD,GPIO_Pin_12,Bit_RESET);
-		GPIO_WriteBit(GPIOD,GPIO_Pin_13,Bit_RESET);
-		GPIO_WriteBit(GPIOD,GPIO_Pin_14,Bit_RESET);
-		GPIO_WriteBit(GPIOD,GPIO_Pin_15,Bit_RESET);
-		}		
-	}
-}
-void ControlWater(void *pvParameters)	{
-
+void runPeristaltic(void *pvParameters) {
+	dosingComplete = false;
+	unsigned int ppmerror = 0;
+	float pherror = 0;
 	while (1) {
-		
-		float phPercent = 0, tdsPercent = 0;
-		float targetPh = 0, targetTds = 0;
-		float sensorPercent = 0, mlsMultipler = 1;
-		uint8_t dosingMode = 0;
-		uint8_t phDoseCount = 0, tdsDoseCount = 0;
-		uint8_t i = 0;
-		if (xSemaphoreTake(xSemaphoredosingInterval,portMAX_DELAY) == pdTRUE ) {
-			dosingComplete = false;
-			while (!dosingComplete && xSemaphoreTake(xSemaphoresensorsReady,portMAX_DELAY) == pdTRUE) {
-				logPhDownResult = false;
-				logPhUpResult = false;
-				logTdsResult = false;
-				// Check if the PPM is out of range
-				if (data_sensor[0] == 0) {
-					targetTds = data_sensor[0];
-				}
-				else if (data_sensor[0] < targetMinTds - tdsOffset) {
-					targetTds = targetMinTds;
-					tdsPercent = percentOutOfRange(targetTds, data_sensor[0]);
-				}
-				// Check if the PH is out of range
-				if (data_sensor[1] == 0) {
-					targetPh = data_sensor[1];
-				}
-				else if (data_sensor[1] < targetMinPh - phOffset) {
-					targetPh = targetMinPh;
-					adjustPhDown = false;
-					phPercent = percentOutOfRange(targetPh, data_sensor[1]);
-				}
-				else if (data_sensor[1] > targetMaxPh + phOffset) {
-					targetPh = targetMaxPh;
-					adjustPhDown = true;
-					phPercent = percentOutOfRange(targetPh, data_sensor[1]);
-				}
-				if (phPercent > 0) {
-					if (phPercent != 0 && tdsPercent > 0 && phDoseCount >= swapInterval) {
-						phPercent = 0;
-						phDoseCount = 0;
-					}
-					else if (tdsPercent != 0 && phPercent > 0 && tdsDoseCount >= swapInterval) {
-						tdsPercent = 0;
-						tdsDoseCount = 0;
-					}
-				}
-				
-				sensorPercent = phPercent;
-				if (tdsPercent > phPercent) {
-					sensorPercent = tdsPercent;
-					dosingMode = 1;
-				}
-				
-				if (sensorPercent > 0) {
-					// ====== PH ======
-          if (dosingMode == 0) {
-            //Setting up PH dosing
-            if (phDoseCount < 255)
-              phDoseCount++;
-            tdsDoseCount = 0;
-            if (adjustPhDown) {
-							for (i =0; i<4;i++) {
-								if (modePumpDoser[i] == PH_DOWN) {
-									dosingAmount = speedtomils(speedPumpDoser[i]);
-									break;
-								}
-							}
-              loadMachineLearning(&data_sensor[1], &previousPhDownSensor, &phDownSensorHistory, &targetMinPh
-                                  , &logPhDownResult, &phDownDosingInc[0], &phDownArrayBlock, &savePhDownResult
-                                  , &dosingAmount, &phDownMls, &phDownMultipler, &previousPhDownMls, (bool*)true);
-              mlsMultipler = phDownMultipler;
-							//Run doser ph down 
-							runDosePHDOWN(speedPumpDoser[i], mlsMultipler);
-            }
-            else {
-							for (i =0; i<4;i++) {
-								if (modePumpDoser[i] == PH_UP) {
-									dosingAmount = speedtomils(speedPumpDoser[i]);
-									break;
-								}
-							}
-              loadMachineLearning(&data_sensor[1], &previousPhUpSensor, &phUpSensorHistory, &targetMaxPh
-                                  , &logPhUpResult, &phUpDosingInc[0], &phUpArrayBlock, &savePhUpResult
-                                  , &dosingAmount, &phUpMls, &phUpMultipler, &previousPhUpMls, (bool*)true);
-              mlsMultipler = phUpMultipler;
-							runDosePHUP(speedPumpDoser[i], mlsMultipler);
-            }
-          }
-          // ====== PPM ======
-          if (dosingMode == 1) {
-            //Setting up PPM dosing
-            if (tdsDoseCount < 255)
-              tdsDoseCount++;
-            phDoseCount = 0;
-						for (i =0; i<4;i++) {
-								if (modePumpDoser[i] == FRE_A) 
-									dosingAmount += speedtomils(speedPumpDoser[i]);
-								if (modePumpDoser[i] == FRE_B) 
-									dosingAmount += speedtomils(speedPumpDoser[i]);
-							}
-            loadMachineLearning(&data_sensor[0], &previousTdsSensor, &tdsSensorHistory, (float*)targetMaxTds
-                                , &logTdsResult, &tdsDosingInc[0], &tdsArrayBlock, &saveTdsResult
-                                , &dosingAmount, &tdsMls, &tdsMultipler, &previousTdsMls, (bool*)true);
-						tdsAMultipler = tdsMultipler * ratiosDosing;
-						tdsBMultipler = tdsMultipler - tdsAMultipler;
-						for (i =0; i<4;i++) {
-								if (modePumpDoser[i] == FRE_A) 
-									runDoseGROUPA(speedPumpDoser[i],tdsAMultipler);
-								if (modePumpDoser[i] == FRE_B) 
-									runDoseGROUPB(speedPumpDoser[i],tdsBMultipler);
-							}	
-						}
+		if (xSemaphoreTake( xSemaphoredosingInterval,portMAX_DELAY) == pdTRUE ){
+			if (xSemaphoreTake( xSemaphoresensorsReady,portMAX_DELAY) == pdTRUE ){
+				while (StartWaterPlant == true || StartDraining == true );
+				dosingComplete = false;
+				while (dosingComplete == false) {
+					ppmerror = targetTds - (unsigned int)data_sensor[0];
+					if (ppmerror > tdsOffsetALL) {
+						runPump = FRE_A;
+						continue;
 					}
 					else 
-          dosingComplete = true;
-			} 
+						runPump = NOMODE;
+					
+					if (data_sensor[1] > targetMaxPh + phOffset || data_sensor[1] < targetMinPh - phOffset ) {
+						if (data_sensor[1] > targetMaxPh + phOffset)
+							runPump = PH_DOWN;
+						if (data_sensor[1] < targetMinPh - phOffset)
+							runPump = PH_UP;
+					}
+					else
+						dosingComplete = true;
+					vTaskDelay(10);
+				}
+			}
 		}
+	}
+}
+void DrainingWater(void *pvParameters) {
+	StartDraining = false;
+	//vTaskSuspend(NULL);
+	while (1) {
+		
+		vTaskDelete(NULL);
 	}
 }
 void WaterPlants(void *pvParameters) {
-	GPIO_WriteBit(GPIOD,GPIO_Pin_0,Bit_SET);
-	GPIO_WriteBit(GPIOD,GPIO_Pin_1,Bit_SET);
-	vTaskSuspend(NULL);
+	GPIO_WriteBit(GPIOD,GPIO_Pin_0,Bit_RESET);
+	GPIO_WriteBit(GPIOD,GPIO_Pin_1,Bit_RESET);
+	//EXTI_GenerateSWInterrupt(EXTI_Line1);
+	uint8_t nearhournow = 0;
+	uint8_t location = 0;
+	uint8_t trunggian0 = 0;
+	uint8_t trunggian1 = 0;
+	uint8_t trunggian2 = 0;
+	uint8_t trunggian3 = 0;
+	uint8_t tempArray[4][112] = {0};
+	uint8_t countTimestamp = 0;
+	bool TimeWrong = false;
+	const uint16_t maxDelay = 7400;
+	uint16_t SpeedtoDelay = 0;
 	while (1) {
-		if (xSemaphoreTake(xSemaphoreEXTIZCD,portMAX_DELAY) == pdTRUE ) {
-			vTaskDelay(1);
-			GPIO_WriteBit(GPIOD,GPIO_Pin_4,Bit_SET);
-			GPIO_WriteBit(GPIOD,GPIO_Pin_5,Bit_SET);
-			delayus(100);
-			GPIO_WriteBit(GPIOD,GPIO_Pin_4,Bit_RESET);
-			GPIO_WriteBit(GPIOD,GPIO_Pin_5,Bit_RESET);
+		if (StartWaterPlant == true ) {
+			while (dosingComplete == false || StartDraining == true);
+			GPIO_WriteBit(GPIOD,GPIO_Pin_0,Bit_SET);
+			GPIO_WriteBit(GPIOD,GPIO_Pin_1,Bit_SET);
+			while (StartWaterPlant == true) {
+				if (xSemaphoreTake(xSemaphoreEXTIZCD,10) == pdTRUE ) {
+					if (PumpAcOneInfo[1] == 0x01) {
+						SpeedtoDelay = (PumpAcOneInfo[0]*maxDelay)/100;
+						delayus(maxDelay-SpeedtoDelay);
+						GPIO_WriteBit(GPIOD,GPIO_Pin_4,Bit_SET);
+						vTaskDelay(1);
+						GPIO_WriteBit(GPIOD,GPIO_Pin_4,Bit_RESET);
+					}
+					else if (PumpAcTwoInfo[1] == 0x01) {
+						SpeedtoDelay = (PumpAcTwoInfo[0]*maxDelay)/100;
+						delayus(maxDelay-SpeedtoDelay);
+						GPIO_WriteBit(GPIOD,GPIO_Pin_5,Bit_SET);
+						vTaskDelay(1);
+						GPIO_WriteBit(GPIOD,GPIO_Pin_5,Bit_RESET);
+					}
+				}
+			}
 		}
+		else {
+			GPIO_WriteBit(GPIOD,GPIO_Pin_0,Bit_RESET);
+			GPIO_WriteBit(GPIOD,GPIO_Pin_1,Bit_RESET);
+		}
+		for (uint8_t i = 0; i<112;i=i+4) {
+			if (TimeWaterthePlants[i] != 0 || TimeWaterthePlants[i+1] != 0 ||
+					TimeWaterthePlants[i+2] != 0 || TimeWaterthePlants[i+3] != 0 ) {
+				
+				if ( TimeWaterthePlants[i+2] >= TimeWaterthePlants[i]  ) {
+					if (TimeWaterthePlants[i+3] >= TimeWaterthePlants[i+1]) {
+						Timestamp[countTimestamp] = i;
+						countTimestamp++;
+					}
+					else {
+						TimeWrong = true;
+					}
+				}
+				else
+					TimeWrong = true;
+			}
+			else 
+				TimeWrong = true;
+			
+			if (TimeWrong == true ) {
+				TimeWrong = false;
+				TimeWaterthePlants[i] = 0;
+				TimeWaterthePlants[i+1] = 0;
+				TimeWaterthePlants[i+2] = 0;
+				TimeWaterthePlants[i+3] = 0;
+			}
+		}
+		
+		for (uint8_t i = 0;i<countTimestamp;i++) {
+			tempArray[0][i] = TimeWaterthePlants[Timestamp[i]];
+			tempArray[1][i] = TimeWaterthePlants[Timestamp[i]+1];
+			tempArray[2][i] = TimeWaterthePlants[Timestamp[i]+2];
+			tempArray[3][i] = TimeWaterthePlants[Timestamp[i]+3];
+		}
+		for (uint8_t i = 0;i<countTimestamp-1;i++) {
+			for (uint8_t j = i+1;j<countTimestamp;j++) {
+				if (tempArray[0][i] > tempArray[0][j]) {
+					
+					trunggian0 = tempArray[0][i];
+					trunggian1 = tempArray[1][i];
+					trunggian2 = tempArray[2][i];
+					trunggian3 = tempArray[3][i];
+					
+					tempArray[0][i] = tempArray[0][j];
+					tempArray[1][i] = tempArray[1][j];
+					tempArray[2][i] = tempArray[2][j];
+					tempArray[3][i] = tempArray[3][j];
+					
+					tempArray[0][j] = trunggian0;
+					tempArray[1][j] = trunggian1;
+					tempArray[2][j] = trunggian2;
+					tempArray[3][j] = trunggian3;
+				}
+			}
+		}
+		for (uint8_t i = 0;i<countTimestamp;i++) {
+			if (tempArray[0][i] - rtc_getdatetime.hour >=0) {
+				StartPump_hour = tempArray[0][i] ;
+				StartPump_minute = tempArray[1][i];
+				StopPump_hour = tempArray[2][i];
+				StopPump_minute = tempArray[3][i];
+				break;
+			}
+			else {
+				StartPump_hour = 25;
+				StartPump_minute = 61;
+				StopPump_hour = 25;
+				StopPump_minute = 61;
+			}
+		}
+		countTimestamp = 0;
+		vTaskDelay(1000);
 	}
 }
 

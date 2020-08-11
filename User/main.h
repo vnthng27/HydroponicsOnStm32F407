@@ -83,7 +83,7 @@ typedef enum  {
 
 modeOfPump modePumpDoser[4] = {NOMODE,NOMODE,NOMODE,FRE_B};
 uint8_t speedPumpDoser[4] = {0,0,0,100};
-
+modeOfPump runPump = NOMODE;
 #define maxSize 20 // size toi da cua mang
 unsigned int phDownDosingInc[maxSize] = {0};
 unsigned int phUpDosingInc[maxSize]={0};
@@ -117,11 +117,7 @@ float tdsBMultipler = 1;
 
 float dosingAmount = 1;
 
-
-
-unsigned int targetMinTds = 400;
-unsigned int targetMaxTds = 600;
-unsigned int tdsOffset = 20;
+unsigned int targetTds = 400;
 
 bool adjustPhDown = false;
 uint8_t swapInterval = 2;
@@ -182,6 +178,7 @@ uint8_t PumpAcOneInfo[2] = {0};
 uint8_t PumpAcTwoInfo[2] = {0}; 
 //Page Pump2 && Pump3
 uint8_t TimeWaterthePlants[112] = {0};
+uint8_t Timestamp[112] = {0};
 //Page Pump4
 uint8_t DayWaterthePlants[7] = {0};
 //Page Pump5
@@ -220,8 +217,23 @@ bool reloadPage = false;
 **	BIEN PHUC VU CHO HE THONG
 */
 uint8_t currentlyDosing = FALSE;
+uint16_t CNT3 = 0;
+__IO uint16_t CCR4_Val = 16800;
 rtc_ds1307_datetime_t rtc_getdatetime;
+bool swapPWM = false;
+bool StartWaterPlant = false;
+bool StartDraining = false;
+uint8_t StartPump_hour = 0;
+uint8_t StartPump_minute = 0;
+uint8_t StopPump_hour = 0;
+uint8_t StopPump_minute = 0;
+bool DateActivePump = false;
 
+uint8_t buffer[sizeof(frame)+1];
+volatile uint8_t data_sonic[4];
+
+uint32_t TimeOut;
+#define USER_TIMEOUT ((uint32_t)0x1E)
 /*
 *	KHAI BAO BIEN VA DINH NGHIA PHUC VU XU LY GIAO TIEP HMI
 */
@@ -234,7 +246,7 @@ typedef enum {FAILED = 0, PASSED = !FAILED} Status;
 
 //	Xac dinh page hien tai cua HMI
 typedef enum {
-	HOME 								= 0U,
+	HOME 								= 30U,
 	WARINING            = 1U,
 	WIFI            		= 2U,
 	PPM           			= 3U,
@@ -254,6 +266,7 @@ typedef enum {
 	SETTING            	= 17U,
 	SETTING_DATE        = 18U,
 	REFILL_DATE         = 19U,
+	CAL									= 20U,
 	CAL_PH 							= 21U,
 	CAL_PPM            	= 22U,
 	CAL_TEMP            = 23U,
@@ -430,21 +443,39 @@ static void USART2_Config(void) {
   USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
   USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
   USART_Init(USART2, &USART_InitStructure);
-  
-	/* NVIC configuration */
-  
-/* Enable the USART3 Interrupt */
-  NVIC_InitStructure.NVIC_IRQChannel = USART2_IRQn;
-  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 7;
-  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
-  NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-  NVIC_Init(&NVIC_InitStructure);
-	/*Enable Interrupt USART*/
-	USART_ITConfig(USART2,USART_IT_RXNE,ENABLE);
 	
+	/* Configure DMA controller to manage USART TX and RX DMA request ----------*/ 
+   
+	 /* Enable the DMA clock */
+  RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_DMA1, ENABLE);
+  /* Configure DMA Initialization Structure */
+	DMA_InitTypeDef  DMA_InitStructure;
+  DMA_InitStructure.DMA_BufferSize = 4 ;
+  DMA_InitStructure.DMA_FIFOMode = DMA_FIFOMode_Enable;
+  DMA_InitStructure.DMA_FIFOThreshold = DMA_FIFOThreshold_1QuarterFull ;
+  DMA_InitStructure.DMA_MemoryBurst = DMA_MemoryBurst_Single ;
+  DMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_Byte;
+  DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;
+  DMA_InitStructure.DMA_Mode = DMA_Mode_Circular;
+  DMA_InitStructure.DMA_PeripheralBaseAddr =(uint32_t) (&(USART2->DR)) ;
+  DMA_InitStructure.DMA_PeripheralBurst = DMA_PeripheralBurst_Single;
+  DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_Byte;
+  DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable;
+  DMA_InitStructure.DMA_Priority = DMA_Priority_High;
+
+  /* Configure RX DMA */
+  DMA_InitStructure.DMA_Channel = DMA_Channel_4 ;
+  DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralToMemory ;
+  DMA_InitStructure.DMA_Memory0BaseAddr =(uint32_t)&data_sonic[0];
+  DMA_Init(DMA1_Stream5,&DMA_InitStructure);
   /* Enable USART2 */
   USART_Cmd(USART2, ENABLE);
 	
+	/* Enable DMA USART RX Stream */
+  DMA_Cmd(DMA1_Stream5,ENABLE);
+  
+  /* Enable USART DMA RX Requsts */
+  USART_DMACmd(USART2, USART_DMAReq_Rx, ENABLE);
 
 	
 
@@ -521,7 +552,7 @@ static void USART3_Config(void) {
   
   /* Enable the USART3 Interrupt */
   NVIC_InitStructure.NVIC_IRQChannel = USART3_IRQn;
-  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 6;
+  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 3;
   NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
   NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
   NVIC_Init(&NVIC_InitStructure);
@@ -562,6 +593,105 @@ static void I2C2_Config(void) {
     I2C_Cmd(I2C2, ENABLE);
 }
 /**
+  * @brief  Configures the I2C1 Peripheral.
+  * @param  None
+  * @retval None
+  */
+static void I2C1_Config(void) {
+	
+	//RCC Configures
+	/*I2C1 Peripheral clock enable */
+  RCC_APB1PeriphClockCmd(RCC_APB1Periph_I2C1, ENABLE);
+	
+	/*SDA GPIO clock enable & SCL GPIO clock enable */
+	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOB, ENABLE);
+	
+	/* Enable the DMA clock */
+  RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_DMA1, ENABLE);
+	
+	/* GPIO Configuration */
+	GPIO_InitTypeDef  GPIO_InitStructure;
+  /*Configure I2C SCL pin */
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_6;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
+  GPIO_InitStructure.GPIO_Speed = GPIO_High_Speed;
+  GPIO_InitStructure.GPIO_OType = GPIO_OType_OD;
+  GPIO_InitStructure.GPIO_PuPd  = GPIO_PuPd_NOPULL;
+  GPIO_Init(GPIOB, &GPIO_InitStructure);
+  
+  /*Configure I2C SDA pin */
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_7;
+  GPIO_Init(GPIOB, &GPIO_InitStructure);
+	
+	/* Connect PB6 to I2C_SCL */
+  GPIO_PinAFConfig(GPIOB, GPIO_PinSource6, GPIO_AF_I2C1);
+  
+  /* Connect PB7 to I2C_SDA */
+  GPIO_PinAFConfig(GPIOB, GPIO_PinSource7, GPIO_AF_I2C1);
+	
+	/*I2C Configures*/
+	I2C_InitTypeDef  I2C_InitStructure;
+	I2C_InitStructure.I2C_Mode = I2C_Mode_I2C;
+	I2C_InitStructure.I2C_DutyCycle = I2C_DutyCycle_2;
+	I2C_InitStructure.I2C_OwnAddress1 = 0x40;
+	I2C_InitStructure.I2C_Ack = I2C_Ack_Enable;
+	I2C_InitStructure.I2C_ClockSpeed = 100000;
+	I2C_InitStructure.I2C_AcknowledgedAddress = I2C_AcknowledgedAddress_7bit;
+	I2C_Init(I2C1, &I2C_InitStructure);
+	
+	/* Configure I2C Filters */
+  I2C_AnalogFilterCmd(I2C1,ENABLE);
+  I2C_DigitalFilterConfig(I2C1,0x0F);
+  
+	DMA_InitTypeDef  DMA_InitStructure;
+  /* Initialize the DMA_Channel member */
+  DMA_InitStructure.DMA_Channel = DMA_Channel_1;
+  
+  /* Initialize the DMA_PeripheralBaseAddr member */
+  DMA_InitStructure.DMA_PeripheralBaseAddr = (uint32_t) 0x40005410;
+  
+  /* Initialize the DMA_PeripheralInc member */         
+  DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable;
+  
+  /* Initialize the DMA_MemoryInc member */
+  DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;
+  
+  /* Initialize the DMA_PeripheralDataSize member */
+  DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_Byte;
+  
+  /* Initialize the DMA_MemoryDataSize member */
+  DMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_Byte;
+  
+  /* Initialize the DMA_Mode member */
+  DMA_InitStructure.DMA_Mode = DMA_Mode_Normal;
+  
+  /* Initialize the DMA_Priority member */
+  DMA_InitStructure.DMA_Priority = DMA_Priority_High;
+  
+  /* Initialize the DMA_FIFOMode member */
+  DMA_InitStructure.DMA_FIFOMode = DMA_FIFOMode_Enable;
+  
+  /* Initialize the DMA_FIFOThreshold member */
+  DMA_InitStructure.DMA_FIFOThreshold = DMA_FIFOThreshold_Full;
+  
+  /* Initialize the DMA_MemoryBurst member */
+  DMA_InitStructure.DMA_MemoryBurst = DMA_MemoryBurst_Single;
+  
+  /* Initialize the DMA_PeripheralBurst member */
+	DMA_InitStructure.DMA_PeripheralBurst = DMA_PeripheralBurst_Single;
+  
+  /* Init DMA for Transmission */
+  /* Initialize the DMA_DIR member */
+  DMA_InitStructure.DMA_DIR = DMA_DIR_MemoryToPeripheral;
+  /* Initialize the DMA_Memory0BaseAddr member */
+  DMA_InitStructure.DMA_Memory0BaseAddr = (uint32_t)buffer;
+  /* Initialize the DMA_BufferSize member */
+  DMA_InitStructure.DMA_BufferSize = sizeof(frame)+1;
+  DMA_Init(DMA1_Stream6, &DMA_InitStructure);
+   
+	
+}
+/**
   * @brief  Configures the SysTick Base time to 1 ms.
   * @param  None
   * @retval None
@@ -600,13 +730,29 @@ static void GPIO_Configuration(void){
 	GPIO_WriteBit(GPIOD,GPIO_Pin_14,Bit_RESET);
 	GPIO_WriteBit(GPIOD,GPIO_Pin_15,Bit_RESET);
 	
-	/*Configure D0 D1 D4 D5 for PWM output TIM4*/
+	/*Configure D2 D3 for on/off sensor*/
 	GPIOD_InitStructure.GPIO_Pin = GPIO_Pin_2 | GPIO_Pin_3 ;
   GPIOD_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
   GPIOD_InitStructure.GPIO_Speed = GPIO_High_Speed;
   GPIOD_InitStructure.GPIO_OType = GPIO_OType_PP;
   GPIOD_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
   GPIO_Init(GPIOD, &GPIOD_InitStructure); 
+	
+	GPIO_WriteBit(GPIOD,GPIO_Pin_2,Bit_RESET);
+	GPIO_WriteBit(GPIOD,GPIO_Pin_3,Bit_RESET);
+	
+	/*Configure D10 for on/off Peristaltic Pump*/
+	GPIOD_InitStructure.GPIO_Pin = GPIO_Pin_11 | GPIO_Pin_10 | GPIO_Pin_6 | GPIO_Pin_7;
+  GPIOD_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
+  GPIOD_InitStructure.GPIO_Speed = GPIO_High_Speed;
+  GPIOD_InitStructure.GPIO_OType = GPIO_OType_PP;
+  GPIOD_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
+  GPIO_Init(GPIOD, &GPIOD_InitStructure);
+	
+	GPIO_WriteBit(GPIOD,GPIO_Pin_11,Bit_RESET);
+	GPIO_WriteBit(GPIOD,GPIO_Pin_10,Bit_RESET);
+	GPIO_WriteBit(GPIOD,GPIO_Pin_6,Bit_RESET);
+	GPIO_WriteBit(GPIOD,GPIO_Pin_7,Bit_RESET);
 	
 	/*Configure D0 D1 D4 D5 for PWM output TIM4*/
 	GPIOD_InitStructure.GPIO_Pin = GPIO_Pin_0 | GPIO_Pin_1 | GPIO_Pin_4 | GPIO_Pin_5;
@@ -737,6 +883,7 @@ uint8_t SPI_Exchange(uint8_t u8Data) {
 static void TIM2_Config() {
 	TIM_TimeBaseInitTypeDef TIM_InitStructure;
 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2, ENABLE);
+	
 	TIM_InitStructure.TIM_CounterMode = TIM_CounterMode_Up;
 	TIM_InitStructure.TIM_Prescaler = 84 - 1;
 	TIM_InitStructure.TIM_Period = 0xFFFFFFFF ; // Update event every overflow
@@ -759,40 +906,90 @@ static void TIM5_Config() {
 
   TIM_Cmd(TIM5, ENABLE);
 }
-//TIM4 for PWM
+//TIM4 for timeout i2c esp
 static void TIM4_Config() {
 	TIM_TimeBaseInitTypeDef TIM_InitStructure;
 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM4, ENABLE);
 	TIM_InitStructure.TIM_Period = 0xFFFF;
-  TIM_InitStructure.TIM_Prescaler = 84 - 1;
+  TIM_InitStructure.TIM_Prescaler = 60000 - 1;
   TIM_InitStructure.TIM_ClockDivision = 0;
   TIM_InitStructure.TIM_CounterMode = TIM_CounterMode_Up;
 	TIM_TimeBaseInit(TIM4, &TIM_InitStructure);
   TIM_Cmd(TIM4, ENABLE);
+	
+	NVIC_InitTypeDef   NVIC_InitStructure;
+	/* Enable Interrupt to the 9 priority */
+  NVIC_InitStructure.NVIC_IRQChannel = TIM4_IRQn;
+  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 4;
+  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+  NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+  NVIC_Init(&NVIC_InitStructure);
 }
-//TIM3 delay for waterplant
+/*TIM 3 for delay us pump ac*/
 static void TIM3_Config() {
+	
 	TIM_TimeBaseInitTypeDef TIM_InitStructure;
 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3, ENABLE);
+	
 	TIM_InitStructure.TIM_CounterMode = TIM_CounterMode_Up;
 	TIM_InitStructure.TIM_Prescaler = 84 - 1;
-	TIM_InitStructure.TIM_Period = 0xFFFF ; // Update event every overflow
-	TIM_InitStructure.TIM_ClockDivision = 0;
+	TIM_InitStructure.TIM_Period = 0xFFFF; // Update event every overflow
+	TIM_InitStructure.TIM_ClockDivision = TIM_CKD_DIV1;
   TIM_InitStructure.TIM_RepetitionCounter = 0;
   TIM_TimeBaseInit(TIM3, &TIM_InitStructure);
 
-  TIM_Cmd(TIM3, ENABLE);
+	TIM_Cmd(TIM3, ENABLE);
 }
+//TIM1 timing peristaltic pump
+static void TIM1_Config() {
+	
+	TIM_TimeBaseInitTypeDef TIM_InitStructure;
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM9, ENABLE);
+	
+	TIM_InitStructure.TIM_CounterMode = TIM_CounterMode_Up;
+	TIM_InitStructure.TIM_Prescaler = (uint16_t) (SystemCoreClock /6000000) - 1;
+	TIM_InitStructure.TIM_Period = 0xFFFF  ; // Update event every overflow
+	TIM_InitStructure.TIM_ClockDivision = 0;
+  TIM_InitStructure.TIM_RepetitionCounter = 0;
+  TIM_TimeBaseInit(TIM3, &TIM_InitStructure);
+	
+	TIM_OCInitTypeDef  TIM_OCInitStructure;
+	/* Output Compare Timing Mode configuration: Channel4 */
+  TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable ;
+  TIM_OCInitStructure.TIM_Pulse = CCR4_Val;
+
+  TIM_OC1Init(TIM9, &TIM_OCInitStructure);
+
+  TIM_OC1PreloadConfig(TIM9, TIM_OCPreload_Disable);
+   
+  /* TIM Interrupts enable */
+  TIM_ITConfig(TIM9, TIM_IT_CC1, ENABLE);
+
+  /* TIM3 enable counter */
+  TIM_Cmd(TIM9, ENABLE);
+
+	NVIC_InitTypeDef NVIC_InitStructure;
+  /* Enable the TIM3 global Interrupt */
+  NVIC_InitStructure.NVIC_IRQChannel = TIM1_BRK_TIM9_IRQn;
+  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 6;
+  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+  NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+  NVIC_Init(&NVIC_InitStructure);
+}
+
+/*Delay us use time 2*/
 void mydelayus(unsigned int time) {
 
     TIM_SetCounter(TIM2,0);  //Load timer CNT = 0  
     while (TIM_GetCounter(TIM2) <= time);
 }
+/*Delay ms use time 5*/
 void mydelayms(unsigned int time) {
 
     TIM_SetCounter(TIM5,0);  //Load timer CNT = 0  
     while (TIM_GetCounter(TIM5) <= (time*2));
 }
+/*Delay us use time 3*/
 void delayus(unsigned int time) {
 	  TIM_SetCounter(TIM3,0);  //Load timer CNT = 0  
     while (TIM_GetCounter(TIM3) <= time);
@@ -884,9 +1081,9 @@ static void ADC1_Config(void) {
   ADC_Init(ADC1, &ADC_InitStructure);
 
   /* ADC1 regular channel1 configuration **************************************/
-  ADC_RegularChannelConfig(ADC1, ADC_Channel_1, 1, ADC_SampleTime_3Cycles);
-	ADC_RegularChannelConfig(ADC1, ADC_Channel_10, 2, ADC_SampleTime_3Cycles);
-	ADC_RegularChannelConfig(ADC1, ADC_Channel_11, 3, ADC_SampleTime_3Cycles);
+  ADC_RegularChannelConfig(ADC1, ADC_Channel_1, 1, ADC_SampleTime_15Cycles);
+	ADC_RegularChannelConfig(ADC1, ADC_Channel_10, 2, ADC_SampleTime_480Cycles);
+	ADC_RegularChannelConfig(ADC1, ADC_Channel_11, 3, ADC_SampleTime_15Cycles);
  /* Enable DMA request after last transfer (Single-ADC mode) */
   ADC_DMARequestAfterLastTransferCmd(ADC1, ENABLE);
 
@@ -897,7 +1094,6 @@ static void ADC1_Config(void) {
   ADC_Cmd(ADC1, ENABLE);
 	
 	DMA_Cmd(DMA2_Stream0, ENABLE);
-
 
 }
 static void EXTI_Line1_Config() {
@@ -919,7 +1115,7 @@ static void EXTI_Line1_Config() {
 
   /* Enable and set EXTI Line1 Interrupt to the 7 priority */
   NVIC_InitStructure.NVIC_IRQChannel = EXTI1_IRQn;
-  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 6;
+  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 4;
   NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
   NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
   NVIC_Init(&NVIC_InitStructure);
@@ -931,13 +1127,14 @@ static void EXTI_Line1_Config() {
 //***************************HMI***************************//
 SemaphoreHandle_t xSemaphoreUARTRX = NULL; // Semaphore UART from ISR
 SemaphoreHandle_t xSemaphoreChangepage = NULL; // Semaphore notification has id and data
-SemaphoreHandle_t xSemaphoreSonicSensor = NULL;
+
 SemaphoreHandle_t xSemaphoredosingInterval = NULL;
 SemaphoreHandle_t xSemaphoresensorsReady = NULL;
 SemaphoreHandle_t xSemaphoreHandleData = NULL;
 SemaphoreHandle_t xSemaphoreHadData = NULL;
 SemaphoreHandle_t xSemaphoreEXTIZCD = NULL;
 SemaphoreHandle_t SaveDataEvery3Minute = NULL;
+
 //Semaphore for handle page's HMI
 
 xTaskHandle TaskpageHome;
@@ -960,6 +1157,7 @@ xTaskHandle TaskpageGraph;
 xTaskHandle TaskpageSetting;
 xTaskHandle TaskpageSettingDate;
 xTaskHandle TaskpageRefilldate;
+xTaskHandle TaskpageCal;
 xTaskHandle TaskpageCalpH;
 xTaskHandle TaskpageCalPPM;
 xTaskHandle TaskpageCalTemp;
@@ -968,9 +1166,11 @@ xTaskHandle TaskpageFlow;
 xTaskHandle TaskpageProfile;
 xTaskHandle TaskpageFeritilizer;
 
+xTaskHandle runPer;
 
 void handleHMI(void *pvParameters);
 void handleUARTRX(void *pvParameters);
+void runPeristaltic(void *pvParameters);
 //tasks page HMI
 void pageHome(void *pvParameters);
 void pageWarning(void *pvParameters);
@@ -992,6 +1192,7 @@ void pageGraph(void *pvParameters);
 void pageSetting(void *pvParameters);
 void pageSettingDate(void *pvParameters);
 void pageRefilldate(void *pvParameters);
+void pageCal(void *pvParameters);
 void pageCalpH(void *pvParameters);
 void pageCalPPM(void *pvParameters);
 void pageCalTemp(void *pvParameters);
@@ -1017,13 +1218,13 @@ void loadMachineLearning(float* a_sensor, float* a_previousSensor, float* a_sens
 int doubleToInt(float *a_value);
 float averageResults(unsigned int *a_array, bool *a_convertToFloat);
 float percentOutOfRange(const float a_setPoint, const float a_val);
-//void runDosePHUP(uint8_t speed, uint8_t a_mlis);
-//void runDosePHDOWN(uint8_t speed, uint8_t a_mlis);
-//void runDoseGROUPA(uint8_t speed, uint8_t a_mlis);
-//void runDoseGROUPB(uint8_t speed, uint8_t a_mlis);
 float speedtomils(uint8_t speed);
 
 void WaterPlants(void *pvParameters);
+void DrainingWater(void *pvParameters);
+void handleRTC(void *pvParameters);
+//*********************************SEND TO ESP********************//
+void I2C_ESP(void *pvParameters);
 /**
   * @brief  Configures the USART Peripheral.
   * @param  None
@@ -1041,6 +1242,7 @@ void USART_Config() {
 void I2C_Config() {
 	//Enable I2C2 for RTC
 	I2C2_Config();
+	I2C1_Config();
 }
 void ADC_Config() {
 	ADC1_Config();
@@ -1051,15 +1253,16 @@ void TIM_Config()
 {
 	TIM2_Config(); // timer 32bit counter
 	TIM5_Config(); // timer 32bit counter
-	//TIM4_Config(); // timer 16bit for pwm at 10khz.
+	TIM4_Config(); // timer 16bit for time out 
 	TIM3_Config();
+	TIM1_Config();
 }
 
 void EXTI_Config()
 {
 	EXTI_Line1_Config();
 	/* Generate software interrupt: simulate a falling edge applied on EXTI0 line */
-  EXTI_GenerateSWInterrupt(EXTI_Line1);
+  
 	
 }
 

@@ -73,10 +73,15 @@ uint8_t I2C_read_nack(void) {
     // disabe acknowledge of received data
     // nack also generates stop condition after last byte received
     // see reference manual for more info
+		uint16_t timeout = 0;
     I2C_AcknowledgeConfig(I2C2, DISABLE);
     I2C_GenerateSTOP(I2C2, ENABLE);
     // wait until one byte has been received
-    while( !I2C_CheckEvent(I2C2, I2C_EVENT_MASTER_BYTE_RECEIVED) );
+    while( !I2C_CheckEvent(I2C2, I2C_EVENT_MASTER_BYTE_RECEIVED) ) {
+			timeout++;
+			if (timeout == 0xFFFE) 
+				break;
+		}
     // read data from I2C data register and return data byte
     uint8_t data = I2C_ReceiveData(I2C2);
     return data;

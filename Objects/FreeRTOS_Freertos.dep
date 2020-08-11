@@ -1,7 +1,7 @@
 Dependencies for Project 'FreeRTOS', Target 'Freertos': (DO NOT MODIFY !)
 CompilerVersion: 5060750::V5.06 update 6 (build 750)::ARMCC
-F (.\User\main.c)(0x5F29B0F1)(--c99 --gnu -c --cpu Cortex-M4.fp.sp -g -O0 --apcs=interwork --split_sections -I .\CMSIS\Include -I .\CMSIS -I .\FreeRTOS -I .\FreeRTOS\include -I .\FreeRTOS\portable\RVDS\ARM_CM4F -I .\Startup -I .\Std_PeriphDriver\inc -I .\Std_PeriphDriver\src -I .\User -I .\FreeRTOS\portable\MemMang -I .\RTC_I2C\Inc -I .\RTC_I2C\Src -I .\OneWireLib-I.\RTE\_Freertos-IC:\Users\Admin\AppData\Local\Arm\Packs\Keil\STM32F4xx_DFP\2.14.0\Drivers\CMSIS\Device\ST\STM32F4xx\Include-IC:\Keil_v5\ARM\CMSIS\Include-D__UVISION_VERSION="529" -DSTM32F407xx -DSTM32F40_41xxx -DUSE_STDPERIPH_DRIVER -DHSE_VALUE="8000000" -DUSE_FULL_ASSERT-o .\objects\main.o --omf_browse .\objects\main.crf --depend .\objects\main.d)
-I (User\main.h)(0x5F29B088)
+F (.\User\main.c)(0x5F32A920)(--c99 --gnu -c --cpu Cortex-M4.fp.sp -g -O0 --apcs=interwork --split_sections -I .\CMSIS\Include -I .\CMSIS -I .\FreeRTOS -I .\FreeRTOS\include -I .\FreeRTOS\portable\RVDS\ARM_CM4F -I .\Startup -I .\Std_PeriphDriver\inc -I .\Std_PeriphDriver\src -I .\User -I .\FreeRTOS\portable\MemMang -I .\RTC_I2C\Inc -I .\RTC_I2C\Src -I .\OneWireLib-I.\RTE\_Freertos-IC:\Users\Admin\AppData\Local\Arm\Packs\Keil\STM32F4xx_DFP\2.14.0\Drivers\CMSIS\Device\ST\STM32F4xx\Include-IC:\Keil_v5\ARM\CMSIS\Include-D__UVISION_VERSION="529" -DSTM32F407xx -DSTM32F40_41xxx -DUSE_STDPERIPH_DRIVER -DHSE_VALUE="8000000" -DUSE_FULL_ASSERT-o .\objects\main.o --omf_browse .\objects\main.crf --depend .\objects\main.d)
+I (User\main.h)(0x5F32A9B0)
 I (C:\Keil_v5\ARM\ARMCC\include\stdbool.h)(0x5D9AE028)
 I (C:\Keil_v5\ARM\ARMCC\include\string.h)(0x5D9AE028)
 I (C:\Keil_v5\ARM\ARMCC\include\stdio.h)(0x5D9AE02A)
@@ -30,7 +30,7 @@ I (.\Std_PeriphDriver\inc\stm32f4xx_syscfg.h)(0x5F031D66)
 I (.\CMSIS\cmsis_os.h)(0x5F031D66)
 I (.\FreeRTOS\include\FreeRTOS.h)(0x5F031D66)
 I (C:\Keil_v5\ARM\ARMCC\include\stddef.h)(0x5D9AE028)
-I (.\FreeRTOS\include\FreeRTOSConfig.h)(0x5F147B7E)
+I (.\FreeRTOS\include\FreeRTOSConfig.h)(0x5F32A5ED)
 I (.\FreeRTOS\include\projdefs.h)(0x5F031D66)
 I (.\FreeRTOS\include\portable.h)(0x5F031D66)
 I (.\FreeRTOS\include\deprecated_definitions.h)(0x5F031D66)
@@ -46,8 +46,8 @@ I (.\OneWireLib\ds18b20_mflib.h)(0x5F1802DD)
 I (.\RTC_I2C\Inc\rtc_usart.h)(0x5F119505)
 I (.\RTC_I2C\Inc\rtc_i2c.h)(0x5F11A381)
 I (.\RTC_I2C\Inc\rtc_ds1307.h)(0x5F11A020)
-F (.\FreeRTOS\include\FreeRTOSConfig.h)(0x5F147B7E)()
-F (.\User\main.h)(0x5F29B088)()
+F (.\FreeRTOS\include\FreeRTOSConfig.h)(0x5F32A5ED)()
+F (.\User\main.h)(0x5F32A9B0)()
 F (.\User\ConfigForRTOS.h)(0x5F031D66)()
 F (.\Startup\startup_stm32f40_41xxx.s)(0x5F031D66)(--cpu Cortex-M4.fp.sp -g --apcs=interwork -I.\RTE\_Freertos-IC:\Users\Admin\AppData\Local\Arm\Packs\Keil\STM32F4xx_DFP\2.14.0\Drivers\CMSIS\Device\ST\STM32F4xx\Include-IC:\Keil_v5\ARM\CMSIS\Include--pd "__UVISION_VERSION SETA 529" --pd "STM32F407xx SETA 1"--list .\listings\startup_stm32f40_41xxx.lst --xref -o .\objects\startup_stm32f40_41xxx.o --depend .\objects\startup_stm32f40_41xxx.d)
 F (.\CMSIS\system_stm32f4xx.c)(0x5F031D66)(--c99 --gnu -c --cpu Cortex-M4.fp.sp -g -O0 --apcs=interwork --split_sections -I .\CMSIS\Include -I .\CMSIS -I .\FreeRTOS -I .\FreeRTOS\include -I .\FreeRTOS\portable\RVDS\ARM_CM4F -I .\Startup -I .\Std_PeriphDriver\inc -I .\Std_PeriphDriver\src -I .\User -I .\FreeRTOS\portable\MemMang -I .\RTC_I2C\Inc -I .\RTC_I2C\Src -I .\OneWireLib-I.\RTE\_Freertos-IC:\Users\Admin\AppData\Local\Arm\Packs\Keil\STM32F4xx_DFP\2.14.0\Drivers\CMSIS\Device\ST\STM32F4xx\Include-IC:\Keil_v5\ARM\CMSIS\Include-D__UVISION_VERSION="529" -DSTM32F407xx -DSTM32F40_41xxx -DUSE_STDPERIPH_DRIVER -DHSE_VALUE="8000000" -DUSE_FULL_ASSERT-o .\objects\system_stm32f4xx.o --omf_browse .\objects\system_stm32f4xx.crf --depend .\objects\system_stm32f4xx.d)
@@ -193,7 +193,7 @@ F (.\FreeRTOS\croutine.c)(0x5F031D66)(--c99 --gnu -c --cpu Cortex-M4.fp.sp -g -O
 I (.\FreeRTOS\include\FreeRTOS.h)(0x5F031D66)
 I (C:\Keil_v5\ARM\ARMCC\include\stddef.h)(0x5D9AE028)
 I (C:\Keil_v5\ARM\ARMCC\include\stdint.h)(0x5D9AE028)
-I (.\FreeRTOS\include\FreeRTOSConfig.h)(0x5F147B7E)
+I (.\FreeRTOS\include\FreeRTOSConfig.h)(0x5F32A5ED)
 I (C:\Users\Admin\AppData\Local\Arm\Packs\Keil\STM32F4xx_DFP\2.14.0\Drivers\CMSIS\Device\ST\STM32F4xx\Include\system_stm32f4xx.h)(0x5EFCCC18)
 I (.\FreeRTOS\include\projdefs.h)(0x5F031D66)
 I (.\FreeRTOS\include\portable.h)(0x5F031D66)
@@ -208,7 +208,7 @@ I (C:\Keil_v5\ARM\ARMCC\include\stdlib.h)(0x5D9AE02A)
 I (.\FreeRTOS\include\FreeRTOS.h)(0x5F031D66)
 I (C:\Keil_v5\ARM\ARMCC\include\stddef.h)(0x5D9AE028)
 I (C:\Keil_v5\ARM\ARMCC\include\stdint.h)(0x5D9AE028)
-I (.\FreeRTOS\include\FreeRTOSConfig.h)(0x5F147B7E)
+I (.\FreeRTOS\include\FreeRTOSConfig.h)(0x5F32A5ED)
 I (C:\Users\Admin\AppData\Local\Arm\Packs\Keil\STM32F4xx_DFP\2.14.0\Drivers\CMSIS\Device\ST\STM32F4xx\Include\system_stm32f4xx.h)(0x5EFCCC18)
 I (.\FreeRTOS\include\projdefs.h)(0x5F031D66)
 I (.\FreeRTOS\include\portable.h)(0x5F031D66)
@@ -222,7 +222,7 @@ I (C:\Keil_v5\ARM\ARMCC\include\string.h)(0x5D9AE028)
 I (.\FreeRTOS\include\FreeRTOS.h)(0x5F031D66)
 I (C:\Keil_v5\ARM\ARMCC\include\stddef.h)(0x5D9AE028)
 I (C:\Keil_v5\ARM\ARMCC\include\stdint.h)(0x5D9AE028)
-I (.\FreeRTOS\include\FreeRTOSConfig.h)(0x5F147B7E)
+I (.\FreeRTOS\include\FreeRTOSConfig.h)(0x5F32A5ED)
 I (C:\Users\Admin\AppData\Local\Arm\Packs\Keil\STM32F4xx_DFP\2.14.0\Drivers\CMSIS\Device\ST\STM32F4xx\Include\system_stm32f4xx.h)(0x5EFCCC18)
 I (.\FreeRTOS\include\projdefs.h)(0x5F031D66)
 I (.\FreeRTOS\include\portable.h)(0x5F031D66)
@@ -238,7 +238,7 @@ I (C:\Keil_v5\ARM\ARMCC\include\string.h)(0x5D9AE028)
 I (.\FreeRTOS\include\FreeRTOS.h)(0x5F031D66)
 I (C:\Keil_v5\ARM\ARMCC\include\stddef.h)(0x5D9AE028)
 I (C:\Keil_v5\ARM\ARMCC\include\stdint.h)(0x5D9AE028)
-I (.\FreeRTOS\include\FreeRTOSConfig.h)(0x5F147B7E)
+I (.\FreeRTOS\include\FreeRTOSConfig.h)(0x5F32A5ED)
 I (C:\Users\Admin\AppData\Local\Arm\Packs\Keil\STM32F4xx_DFP\2.14.0\Drivers\CMSIS\Device\ST\STM32F4xx\Include\system_stm32f4xx.h)(0x5EFCCC18)
 I (.\FreeRTOS\include\projdefs.h)(0x5F031D66)
 I (.\FreeRTOS\include\portable.h)(0x5F031D66)
@@ -255,7 +255,7 @@ I (C:\Keil_v5\ARM\ARMCC\include\stdlib.h)(0x5D9AE02A)
 I (.\FreeRTOS\include\FreeRTOS.h)(0x5F031D66)
 I (C:\Keil_v5\ARM\ARMCC\include\stddef.h)(0x5D9AE028)
 I (C:\Keil_v5\ARM\ARMCC\include\stdint.h)(0x5D9AE028)
-I (.\FreeRTOS\include\FreeRTOSConfig.h)(0x5F147B7E)
+I (.\FreeRTOS\include\FreeRTOSConfig.h)(0x5F32A5ED)
 I (C:\Users\Admin\AppData\Local\Arm\Packs\Keil\STM32F4xx_DFP\2.14.0\Drivers\CMSIS\Device\ST\STM32F4xx\Include\system_stm32f4xx.h)(0x5EFCCC18)
 I (.\FreeRTOS\include\projdefs.h)(0x5F031D66)
 I (.\FreeRTOS\include\portable.h)(0x5F031D66)
@@ -270,7 +270,7 @@ F (.\FreeRTOS\portable\RVDS\ARM_CM4F\port.c)(0x5F031D66)(--c99 --gnu -c --cpu Co
 I (.\FreeRTOS\include\FreeRTOS.h)(0x5F031D66)
 I (C:\Keil_v5\ARM\ARMCC\include\stddef.h)(0x5D9AE028)
 I (C:\Keil_v5\ARM\ARMCC\include\stdint.h)(0x5D9AE028)
-I (.\FreeRTOS\include\FreeRTOSConfig.h)(0x5F147B7E)
+I (.\FreeRTOS\include\FreeRTOSConfig.h)(0x5F32A5ED)
 I (C:\Users\Admin\AppData\Local\Arm\Packs\Keil\STM32F4xx_DFP\2.14.0\Drivers\CMSIS\Device\ST\STM32F4xx\Include\system_stm32f4xx.h)(0x5EFCCC18)
 I (.\FreeRTOS\include\projdefs.h)(0x5F031D66)
 I (.\FreeRTOS\include\portable.h)(0x5F031D66)
@@ -284,7 +284,7 @@ I (C:\Keil_v5\ARM\ARMCC\include\stdlib.h)(0x5D9AE02A)
 I (.\FreeRTOS\include\FreeRTOS.h)(0x5F031D66)
 I (C:\Keil_v5\ARM\ARMCC\include\stddef.h)(0x5D9AE028)
 I (C:\Keil_v5\ARM\ARMCC\include\stdint.h)(0x5D9AE028)
-I (.\FreeRTOS\include\FreeRTOSConfig.h)(0x5F147B7E)
+I (.\FreeRTOS\include\FreeRTOSConfig.h)(0x5F32A5ED)
 I (C:\Users\Admin\AppData\Local\Arm\Packs\Keil\STM32F4xx_DFP\2.14.0\Drivers\CMSIS\Device\ST\STM32F4xx\Include\system_stm32f4xx.h)(0x5EFCCC18)
 I (.\FreeRTOS\include\projdefs.h)(0x5F031D66)
 I (.\FreeRTOS\include\portable.h)(0x5F031D66)
@@ -293,7 +293,7 @@ I (.\FreeRTOS\portable\RVDS\ARM_CM4F\portmacro.h)(0x5F031D66)
 I (.\FreeRTOS\include\mpu_wrappers.h)(0x5F031D66)
 I (.\FreeRTOS\include\task.h)(0x5F031D66)
 I (.\FreeRTOS\include\list.h)(0x5F031D66)
-F (.\RTC_I2C\Src\rtc_i2c.c)(0x5F11A417)(--c99 --gnu -c --cpu Cortex-M4.fp.sp -g -O0 --apcs=interwork --split_sections -I .\CMSIS\Include -I .\CMSIS -I .\FreeRTOS -I .\FreeRTOS\include -I .\FreeRTOS\portable\RVDS\ARM_CM4F -I .\Startup -I .\Std_PeriphDriver\inc -I .\Std_PeriphDriver\src -I .\User -I .\FreeRTOS\portable\MemMang -I .\RTC_I2C\Inc -I .\RTC_I2C\Src -I .\OneWireLib-I.\RTE\_Freertos-IC:\Users\Admin\AppData\Local\Arm\Packs\Keil\STM32F4xx_DFP\2.14.0\Drivers\CMSIS\Device\ST\STM32F4xx\Include-IC:\Keil_v5\ARM\CMSIS\Include-D__UVISION_VERSION="529" -DSTM32F407xx -DSTM32F40_41xxx -DUSE_STDPERIPH_DRIVER -DHSE_VALUE="8000000" -DUSE_FULL_ASSERT-o .\objects\rtc_i2c.o --omf_browse .\objects\rtc_i2c.crf --depend .\objects\rtc_i2c.d)
+F (.\RTC_I2C\Src\rtc_i2c.c)(0x5F2D6219)(--c99 --gnu -c --cpu Cortex-M4.fp.sp -g -O0 --apcs=interwork --split_sections -I .\CMSIS\Include -I .\CMSIS -I .\FreeRTOS -I .\FreeRTOS\include -I .\FreeRTOS\portable\RVDS\ARM_CM4F -I .\Startup -I .\Std_PeriphDriver\inc -I .\Std_PeriphDriver\src -I .\User -I .\FreeRTOS\portable\MemMang -I .\RTC_I2C\Inc -I .\RTC_I2C\Src -I .\OneWireLib-I.\RTE\_Freertos-IC:\Users\Admin\AppData\Local\Arm\Packs\Keil\STM32F4xx_DFP\2.14.0\Drivers\CMSIS\Device\ST\STM32F4xx\Include-IC:\Keil_v5\ARM\CMSIS\Include-D__UVISION_VERSION="529" -DSTM32F407xx -DSTM32F40_41xxx -DUSE_STDPERIPH_DRIVER -DHSE_VALUE="8000000" -DUSE_FULL_ASSERT-o .\objects\rtc_i2c.o --omf_browse .\objects\rtc_i2c.crf --depend .\objects\rtc_i2c.d)
 I (.\CMSIS\stm32f4xx.h)(0x5F031D66)
 I (.\CMSIS\Include\core_cm4.h)(0x5F031D66)
 I (C:\Keil_v5\ARM\ARMCC\include\stdint.h)(0x5D9AE028)
@@ -333,7 +333,7 @@ I (.\Std_PeriphDriver\inc\stm32f4xx_i2c.h)(0x5F031D66)
 I (.\RTC_I2C\Inc\rtc_usart.h)(0x5F119505)
 I (.\RTC_I2C\Inc\rtc_i2c.h)(0x5F11A381)
 I (.\RTC_I2C\Inc\rtc_ds1307.h)(0x5F11A020)
-F (.\OneWireLib\ds18b20_mflib.c)(0x5F1802E3)(--c99 --gnu -c --cpu Cortex-M4.fp.sp -g -O0 --apcs=interwork --split_sections -I .\CMSIS\Include -I .\CMSIS -I .\FreeRTOS -I .\FreeRTOS\include -I .\FreeRTOS\portable\RVDS\ARM_CM4F -I .\Startup -I .\Std_PeriphDriver\inc -I .\Std_PeriphDriver\src -I .\User -I .\FreeRTOS\portable\MemMang -I .\RTC_I2C\Inc -I .\RTC_I2C\Src -I .\OneWireLib-I.\RTE\_Freertos-IC:\Users\Admin\AppData\Local\Arm\Packs\Keil\STM32F4xx_DFP\2.14.0\Drivers\CMSIS\Device\ST\STM32F4xx\Include-IC:\Keil_v5\ARM\CMSIS\Include-D__UVISION_VERSION="529" -DSTM32F407xx -DSTM32F40_41xxx -DUSE_STDPERIPH_DRIVER -DHSE_VALUE="8000000" -DUSE_FULL_ASSERT-o .\objects\ds18b20_mflib.o --omf_browse .\objects\ds18b20_mflib.crf --depend .\objects\ds18b20_mflib.d)
+F (.\OneWireLib\ds18b20_mflib.c)(0x5F2D5BD1)(--c99 --gnu -c --cpu Cortex-M4.fp.sp -g -O0 --apcs=interwork --split_sections -I .\CMSIS\Include -I .\CMSIS -I .\FreeRTOS -I .\FreeRTOS\include -I .\FreeRTOS\portable\RVDS\ARM_CM4F -I .\Startup -I .\Std_PeriphDriver\inc -I .\Std_PeriphDriver\src -I .\User -I .\FreeRTOS\portable\MemMang -I .\RTC_I2C\Inc -I .\RTC_I2C\Src -I .\OneWireLib-I.\RTE\_Freertos-IC:\Users\Admin\AppData\Local\Arm\Packs\Keil\STM32F4xx_DFP\2.14.0\Drivers\CMSIS\Device\ST\STM32F4xx\Include-IC:\Keil_v5\ARM\CMSIS\Include-D__UVISION_VERSION="529" -DSTM32F407xx -DSTM32F40_41xxx -DUSE_STDPERIPH_DRIVER -DHSE_VALUE="8000000" -DUSE_FULL_ASSERT-o .\objects\ds18b20_mflib.o --omf_browse .\objects\ds18b20_mflib.crf --depend .\objects\ds18b20_mflib.d)
 I (OneWireLib\ds18b20_mflib.h)(0x5F1802DD)
 I (C:\Keil_v5\ARM\ARMCC\include\math.h)(0x5D9AE022)
 I (.\CMSIS\stm32f4xx.h)(0x5F031D66)
