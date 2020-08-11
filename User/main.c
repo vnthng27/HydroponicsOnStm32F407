@@ -61,7 +61,7 @@ int main(void) {
 	//xTaskCreate(ControlWater, "ControlEnviromental", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
 	xTaskCreate(WaterPlants, "WaterPlants", 400, NULL, 2, NULL);
 	xTaskCreate(DrainingWater, "DrainingWater", 200, NULL, 1, NULL);
-	xTaskCreate(I2C_ESP, "I2C_ESP", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
+	xTaskCreate(I2C_ESP, "I2C_ESP", 1024, NULL, 2, NULL);
 	vTaskStartScheduler();
 	
 	for(;;){}

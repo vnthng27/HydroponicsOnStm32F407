@@ -552,8 +552,8 @@ static void USART3_Config(void) {
   
   /* Enable the USART3 Interrupt */
   NVIC_InitStructure.NVIC_IRQChannel = USART3_IRQn;
-  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 3;
-  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
+  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 3;
   NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
   NVIC_Init(&NVIC_InitStructure);
 	/*Enable Interrupt USART*/
@@ -633,7 +633,7 @@ static void I2C1_Config(void) {
 	I2C_InitTypeDef  I2C_InitStructure;
 	I2C_InitStructure.I2C_Mode = I2C_Mode_I2C;
 	I2C_InitStructure.I2C_DutyCycle = I2C_DutyCycle_2;
-	I2C_InitStructure.I2C_OwnAddress1 = 0x40;
+	I2C_InitStructure.I2C_OwnAddress1 = 0x80;
 	I2C_InitStructure.I2C_Ack = I2C_Ack_Enable;
 	I2C_InitStructure.I2C_ClockSpeed = 100000;
 	I2C_InitStructure.I2C_AcknowledgedAddress = I2C_AcknowledgedAddress_7bit;
@@ -920,8 +920,8 @@ static void TIM4_Config() {
 	NVIC_InitTypeDef   NVIC_InitStructure;
 	/* Enable Interrupt to the 9 priority */
   NVIC_InitStructure.NVIC_IRQChannel = TIM4_IRQn;
-  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 4;
-  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
+  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 4;
   NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
   NVIC_Init(&NVIC_InitStructure);
 }
@@ -1115,8 +1115,8 @@ static void EXTI_Line1_Config() {
 
   /* Enable and set EXTI Line1 Interrupt to the 7 priority */
   NVIC_InitStructure.NVIC_IRQChannel = EXTI1_IRQn;
-  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 4;
-  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
+  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 4;
   NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
   NVIC_Init(&NVIC_InitStructure);
 }
@@ -1255,7 +1255,7 @@ void TIM_Config()
 	TIM5_Config(); // timer 32bit counter
 	TIM4_Config(); // timer 16bit for time out 
 	TIM3_Config();
-	TIM1_Config();
+	//TIM1_Config();
 }
 
 void EXTI_Config()
