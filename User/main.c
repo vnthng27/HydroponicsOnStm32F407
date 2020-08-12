@@ -2,11 +2,12 @@
 
 int main(void) {
 	  /* USART configuration -----------------------------------------------------*/
+	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_4);
   USART_Config();
 	GPIO_Configuration();         //Config LED PIN
 	I2C_Config();
 	ADC_Config();
-	
+	TIM_Config();
 	EXTI_Config();
 	//Create Semaphore 
 	xSemaphoreUARTRX = xSemaphoreCreateBinary();
@@ -61,19 +62,19 @@ int main(void) {
 	//xTaskCreate(ControlWater, "ControlEnviromental", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
 	xTaskCreate(WaterPlants, "WaterPlants", 400, NULL, 2, NULL);
 	xTaskCreate(DrainingWater, "DrainingWater", 200, NULL, 1, NULL);
-	xTaskCreate(I2C_ESP, "I2C_ESP", 1024, NULL, 2, NULL);
+	xTaskCreate(I2C_ESP, "I2C_ESP", 130, NULL, 1, NULL);
 	vTaskStartScheduler();
 	
 	for(;;){}
 }
-
+//52 pro
 void TIM1_BRK_TIM9_IRQHandler() {
 	uint16_t capture = 0;
-	//static BaseType_t xHigherPriorityTaskWoken ;
-	//xHigherPriorityTaskWoken = pdFALSE ;
+	static BaseType_t xHigherPriorityTaskWoken ;
+	xHigherPriorityTaskWoken = pdFALSE ;
 	if (TIM_GetITStatus(TIM9, TIM_IT_CC1) != RESET) {
-    //TIM_ClearITPendingBit(TIM9, TIM_IT_CC1);
-
+    
+		TIM_ClearITPendingBit(TIM9, TIM_IT_CC1);
     /* LED4 toggling with frequency = 500 Hz (Debug hardware) */
 		
     GPIO_ToggleBits(GPIOD,GPIO_Pin_6);
@@ -86,10 +87,12 @@ void TIM1_BRK_TIM9_IRQHandler() {
 //			swapPWM = true;
 //			capture += CCR4_Val;
 //		}
-    //TIM_SetCompare1(TIM9, capture + CCR4_Val);
+    TIM_SetCompare1(TIM9, capture + CCR4_Val);
   }
-	//portYIELD_FROM_ISR( xHigherPriorityTaskWoken );	
+	
+	portYIELD_FROM_ISR( xHigherPriorityTaskWoken );	
 }
+//53 pro
 void TIM4_IRQHandler() {
 	static BaseType_t xHigherPriorityTaskWoken ;
 	xHigherPriorityTaskWoken = pdFALSE ;
@@ -99,6 +102,7 @@ void TIM4_IRQHandler() {
   }
 	portYIELD_FROM_ISR( xHigherPriorityTaskWoken );	
 }
+//52 pro
 void USART3_IRQHandler() {
 	static BaseType_t xHigherPriorityTaskWoken ;
 	xHigherPriorityTaskWoken = pdFALSE ;
@@ -133,7 +137,7 @@ void USART3_puts(volatile char *s) {
 void EXTI1_IRQHandler(void) {
 	static BaseType_t xHigherPriorityTaskWoken ;
 	xHigherPriorityTaskWoken = pdFALSE ;
-  if(GPIO_ReadInputDataBit(GPIOB,GPIO_Pin_1) == SET && StartWaterPlant == true)
+  if(GPIO_ReadInputDataBit(GPIOB,GPIO_Pin_1) == SET )
   {
 		xSemaphoreGiveFromISR( xSemaphoreEXTIZCD, &xHigherPriorityTaskWoken );
 		/* Clear the EXTI line 1 pending bit */
@@ -2186,7 +2190,7 @@ void handleHMI(void *pvParameters) {
 }
 
 void handleUARTRX(void *pvParameters) {
-	TIM_Config();
+	
 	memset(DataHMIREV,'\0',LENGTH_DATA_HMI);
 	while(1)
 	{	
@@ -2740,7 +2744,7 @@ void DrainingWater(void *pvParameters) {
 void WaterPlants(void *pvParameters) {
 	GPIO_WriteBit(GPIOD,GPIO_Pin_0,Bit_RESET);
 	GPIO_WriteBit(GPIOD,GPIO_Pin_1,Bit_RESET);
-	//EXTI_GenerateSWInterrupt(EXTI_Line1);
+	EXTI_GenerateSWInterrupt(EXTI_Line1);
 	uint8_t nearhournow = 0;
 	uint8_t location = 0;
 	uint8_t trunggian0 = 0;

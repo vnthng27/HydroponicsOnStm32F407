@@ -234,6 +234,8 @@ volatile uint8_t data_sonic[4];
 
 uint32_t TimeOut;
 #define USER_TIMEOUT ((uint32_t)0x1E)
+
+bool firstScan = false;
 /*
 *	KHAI BAO BIEN VA DINH NGHIA PHUC VU XU LY GIAO TIEP HMI
 */
@@ -548,12 +550,12 @@ static void USART3_Config(void) {
 	
 	 /* NVIC configuration */
   /* Configure the Priority Group to 4 bits */
-  NVIC_PriorityGroupConfig(NVIC_PriorityGroup_4);
+ // NVIC_PriorityGroupConfig(NVIC_PriorityGroup_4);
   
   /* Enable the USART3 Interrupt */
   NVIC_InitStructure.NVIC_IRQChannel = USART3_IRQn;
-  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
-  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 3;
+  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 5;
+  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 2;
   NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
   NVIC_Init(&NVIC_InitStructure);
 	/*Enable Interrupt USART*/
@@ -633,7 +635,7 @@ static void I2C1_Config(void) {
 	I2C_InitTypeDef  I2C_InitStructure;
 	I2C_InitStructure.I2C_Mode = I2C_Mode_I2C;
 	I2C_InitStructure.I2C_DutyCycle = I2C_DutyCycle_2;
-	I2C_InitStructure.I2C_OwnAddress1 = 0x80;
+	I2C_InitStructure.I2C_OwnAddress1 = 0x40<<1;
 	I2C_InitStructure.I2C_Ack = I2C_Ack_Enable;
 	I2C_InitStructure.I2C_ClockSpeed = 100000;
 	I2C_InitStructure.I2C_AcknowledgedAddress = I2C_AcknowledgedAddress_7bit;
@@ -920,8 +922,8 @@ static void TIM4_Config() {
 	NVIC_InitTypeDef   NVIC_InitStructure;
 	/* Enable Interrupt to the 9 priority */
   NVIC_InitStructure.NVIC_IRQChannel = TIM4_IRQn;
-  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
-  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 4;
+  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 5;
+  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
   NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
   NVIC_Init(&NVIC_InitStructure);
 }
@@ -941,7 +943,7 @@ static void TIM3_Config() {
 	TIM_Cmd(TIM3, ENABLE);
 }
 //TIM1 timing peristaltic pump
-static void TIM1_Config() {
+static void TIM9_Config() {
 	
 	TIM_TimeBaseInitTypeDef TIM_InitStructure;
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM9, ENABLE);
@@ -971,8 +973,8 @@ static void TIM1_Config() {
 	NVIC_InitTypeDef NVIC_InitStructure;
   /* Enable the TIM3 global Interrupt */
   NVIC_InitStructure.NVIC_IRQChannel = TIM1_BRK_TIM9_IRQn;
-  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 6;
-  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 5;
+  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 2;
   NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
   NVIC_Init(&NVIC_InitStructure);
 }
@@ -1113,10 +1115,11 @@ static void EXTI_Line1_Config() {
   EXTI_InitStructure.EXTI_LineCmd = ENABLE;
   EXTI_Init(&EXTI_InitStructure);
 
+	//NVIC_PriorityGroupConfig (NVIC_PriorityGroup_4);
   /* Enable and set EXTI Line1 Interrupt to the 7 priority */
   NVIC_InitStructure.NVIC_IRQChannel = EXTI1_IRQn;
-  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
-  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 4;
+  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 5;
+  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 1;
   NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
   NVIC_Init(&NVIC_InitStructure);
 }
@@ -1255,7 +1258,7 @@ void TIM_Config()
 	TIM5_Config(); // timer 32bit counter
 	TIM4_Config(); // timer 16bit for time out 
 	TIM3_Config();
-	//TIM1_Config();
+	TIM9_Config();
 }
 
 void EXTI_Config()
